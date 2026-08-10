@@ -40,8 +40,19 @@ fun ChktApp() {
                     listId = listId,
                     onBack = { navController.popBackStack() },
                     onEdit = { reminderId ->
-                        navController.navigate("edit/$listId?reminderId=${reminderId ?: ""}")
+                        if (reminderId == null) navController.navigate("new/$listId")
+                        else navController.navigate("edit/$listId?reminderId=$reminderId")
                     },
+                )
+            }
+            composable(
+                "new/{listId}",
+                arguments = listOf(navArgument("listId") { type = NavType.StringType }),
+            ) { entry ->
+                val listId = entry.arguments?.getString("listId") ?: return@composable
+                NewReminderWizard(
+                    listId = listId,
+                    onDone = { navController.popBackStack() },
                 )
             }
             composable(

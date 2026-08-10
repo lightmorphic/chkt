@@ -401,7 +401,7 @@ private fun LocationPicker(
 }
 
 @SuppressLint("MissingPermission")
-private fun lastKnownLocation(context: Context): Pair<Double, Double>? = try {
+internal fun lastKnownLocation(context: Context): Pair<Double, Double>? = try {
     val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     val loc = lm.allProviders.asSequence()
         .mapNotNull { lm.getLastKnownLocation(it) }
