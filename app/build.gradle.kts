@@ -13,8 +13,10 @@ android {
         applicationId = "org.chkt.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        // Bump BOTH for every build that leaves this machine, including test
+        // builds: same-version sideloads can silently keep the old install.
+        versionCode = 4
+        versionName = "1.0.0-test4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
