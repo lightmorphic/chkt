@@ -21,9 +21,13 @@ fun ChktApp() {
     val context = LocalContext.current
     val repository = remember { Repository(context.applicationContext) }
     val navController = rememberNavController()
+    // First run (or missing permissions): walk through setup before anything else.
+    val startDestination = remember {
+        if (SetupCheck.allEssentialGranted(context)) "lists" else "setup"
+    }
 
     CompositionLocalProvider(LocalRepository provides repository) {
-        NavHost(navController = navController, startDestination = "lists") {
+        NavHost(navController = navController, startDestination = startDestination) {
             composable("lists") {
                 ListsScreen(
                     onOpenList = { navController.navigate("reminders/$it") },
@@ -50,10 +54,17 @@ fun ChktApp() {
                 arguments = listOf(navArgument("listId") { type = NavType.StringType }),
             ) { entry ->
                 val listId = entry.arguments?.getString("listId") ?: return@composable
-                NewReminderWizard(
+                // One screen with every field, per Charlie: no step-by-step.
+                EditReminderScreen(
                     listId = listId,
+                    reminderId = null,
                     onDone = { navController.popBackStack() },
                 )
+            }
+            composable("setup") {
+                SetupScreen(onDone = {
+                    navController.navigate("lists") { popUpTo("setup") { inclusive = true } }
+                })
             }
             composable(
                 "edit/{listId}?reminderId={reminderId}",

@@ -28,6 +28,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,9 @@ fun EditReminderScreen(
     var nagInterval by remember { mutableStateOf(0) }
     var nagStopAfter by remember { mutableStateOf(60) }
     var deleteAfterDismissed by remember { mutableStateOf(false) }
+    var active by remember { mutableStateOf(true) }
+    var chosenListId by remember { mutableStateOf(listId) }
+    val allLists by repo.db.lists().observeAll().collectAsState(initial = emptyList())
     var locationTrigger by remember { mutableStateOf(LocationTrigger.NONE) }
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
@@ -99,6 +103,8 @@ fun EditReminderScreen(
                 vibrate = r.vibrate; respectDnd = r.respectDnd
                 nagInterval = r.nagIntervalMinutes; nagStopAfter = r.nagStopAfterMinutes
                 deleteAfterDismissed = r.deleteAfterDismissed
+                active = r.enabled
+                chosenListId = r.listId
                 locationTrigger = r.locationTrigger
                 latitude = r.latitude; longitude = r.longitude; radius = r.radiusMetres
             }
@@ -111,7 +117,8 @@ fun EditReminderScreen(
             it.atTime(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         }
         val base = original
-        val reminder = (base ?: Reminder(listId = listId, title = "", dueAt = null)).copy(
+        val reminder = (base ?: Reminder(listId = chosenListId, title = "", dueAt = null)).copy(
+            listId = chosenListId,
             title = title.trim(),
             notes = notes.trim(),
             dueAt = dueAt,
@@ -124,7 +131,7 @@ fun EditReminderScreen(
             nagStopAfterMinutes = nagStopAfter,
             nagStartedAt = null,
             deleteAfterDismissed = deleteAfterDismissed,
-            enabled = true,
+            enabled = active,
             snoozedUntil = null,
             locationTrigger = locationTrigger,
             latitude = latitude,
@@ -163,6 +170,19 @@ fun EditReminderScreen(
                 label = { Text("Notes (also spoken)") },
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (allLists.size > 1) {
+                SectionLabel("List")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    allLists.forEach { l ->
+                        FilterChip(
+                            selected = chosenListId == l.id,
+                            onClick = { chosenListId = l.id },
+                            label = { Text(l.name) },
+                        )
+                    }
+                }
+            }
 
             SectionLabel("When")
             DateTimeRow(
@@ -210,6 +230,10 @@ fun EditReminderScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = deleteAfterDismissed, onCheckedChange = { deleteAfterDismissed = it })
                 Text("  Delete once dismissed", style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = active, onCheckedChange = { active = it })
+                Text("  Active", style = MaterialTheme.typography.bodyMedium)
             }
 
             SectionLabel("Location")

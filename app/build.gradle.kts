@@ -15,8 +15,8 @@ android {
         targetSdk = 34
         // Bump BOTH for every build that leaves this machine, including test
         // builds: same-version sideloads can silently keep the old install.
-        versionCode = 4
-        versionName = "1.0.0-test4"
+        versionCode = 5
+        versionName = "1.0.0-test5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

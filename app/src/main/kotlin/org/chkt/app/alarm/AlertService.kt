@@ -254,7 +254,9 @@ class AlertService : Service() {
             .setContentIntent(fullScreenIntent)
             .setDeleteIntent(serviceAction(ACTION_DISMISSED))
             .addAction(0, getString(R.string.action_done), serviceAction(ACTION_DONE))
-            .addAction(0, getString(R.string.action_snooze), serviceAction(ACTION_SNOOZE, 10))
+            // Snooze length is chosen when the alert happens, so this opens
+            // the chooser rather than snoozing for a preset time.
+            .addAction(0, getString(R.string.action_snooze), fullScreenIntent)
 
         if (fullScreen) builder.setFullScreenIntent(fullScreenIntent, true)
         return builder.build()
