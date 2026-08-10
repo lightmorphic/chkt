@@ -8,7 +8,7 @@ import java.time.temporal.TemporalAdjusters
 
 /**
  * Parses the structured voice phrasing used by the record widget. This is
- * deliberately NOT natural-language understanding — it accepts a small set of
+ * deliberately NOT natural-language understanding, it accepts a small set of
  * predictable shapes and nothing else:
  *
  *   "remind me at 2pm to feed the cat"
@@ -70,7 +70,7 @@ object PhraseParser {
             return Parsed(title, due.withSecond(0).withNano(0), repeat)
         }
 
-        // "at 2pm / at 14:30 / at 9" — may appear after tomorrow/on-day too
+        // "at 2pm / at 14:30 / at 9", may appear after tomorrow/on-day too
         Regex("^at (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?\\b").find(raw)?.let { m ->
             var hour = m.groupValues[1].toInt()
             val minute = m.groupValues[2].ifBlank { "0" }.toInt()

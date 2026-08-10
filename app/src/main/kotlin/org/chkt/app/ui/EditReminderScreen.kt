@@ -179,7 +179,7 @@ fun EditReminderScreen(
                         latitude = loc.first; longitude = loc.second
                         locationNote = "Place set to where you are now."
                     } else {
-                        locationNote = "Couldn't read your location — check location is on and permission granted."
+                        locationNote = "Couldn't read your location, check location is on and permission granted."
                     }
                 },
                 onRadius = { radius = it },

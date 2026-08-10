@@ -135,7 +135,7 @@ class AlertService : Service() {
         }
     }
 
-    /** Audio finished — keep the notification up but let the service die soon. */
+    /** Audio finished, keep the notification up but let the service die soon. */
     private fun finishAfterDelay() {
         scope.launch {
             delay(1_000)

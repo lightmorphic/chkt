@@ -1,0 +1,25 @@
+Chkt rings, then speaks your reminder out loud, so you know what needs
+doing without touching your phone.
+
+Features:
+
+* Spoken reminders through your phone's text-to-speech engine (SherpaTTS
+  recommended, free and offline). Per-reminder alert styles: ringtone +
+  speech, ringtone only, speech only, or a plain notification, with an
+  optional tone before the speech.
+* Exact alarms that survive reboots and battery savers, bypass Do Not
+  Disturb, and show a full-screen alert like an alarm clock.
+* Multiple reminder lists.
+* Flexible repeats: daily, weekly, monthly, yearly, custom intervals.
+* Snooze from 10 minutes up to a day.
+* Tap-to-record widget: tap, say "remind me at 2pm to feed the cat", done.
+  Parsed on your device, audio never leaves your phone.
+* Location reminders when you arrive at or leave a place, using Android's
+  own location services.
+* Quiet hours, a do-not-disturb schedule for Chkt itself.
+* Daily backups, plus export/import as plain JSON or markdown.
+* Optional sync with a self-hosted Chkt Server (off by default, the app
+  is fully usable offline, forever).
+* Lightweight completion statistics.
+
+No ads, no tracking, no Google services, no account. GPL-3.0.

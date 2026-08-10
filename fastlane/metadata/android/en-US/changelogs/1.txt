@@ -1,0 +1,5 @@
+First release: spoken reminders with per-reminder alert styles, exact
+alarms with full-screen alerts and DND bypass, multiple lists, flexible
+repeats, snooze, quiet hours, voice-record widget, location reminders,
+daily backups, JSON/markdown export-import, optional self-hosted sync,
+and completion statistics.

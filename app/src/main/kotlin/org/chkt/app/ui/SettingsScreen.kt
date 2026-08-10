@@ -94,7 +94,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     ) { uri ->
         if (uri != null) scope.launch {
             val count = ExportImport.importJsonFromUri(context, repo, uri)
-            statusMessage = if (count >= 0) "Imported $count reminders." else "Import failed — is it a Chkt JSON export?"
+            statusMessage = if (count >= 0) "Imported $count reminders." else "Import failed, is it a Chkt JSON export?"
         }
     }
 
@@ -117,7 +117,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
                 val exactOk = Build.VERSION.SDK_INT < 31 || alarmManager.canScheduleExactAlarms()
                 Text(
-                    if (exactOk) "Exact alarms are allowed — reminders will fire on time."
+                    if (exactOk) "Exact alarms are allowed, reminders will fire on time."
                     else "Exact alarms are blocked. Reminders may be late until you allow them.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -160,7 +160,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             SettingsCard("Backup") {
                 Text(
                     if (backupEnabled && backupFolder != null) "Daily backup is on."
-                    else "Daily backup is off. Pick a folder to turn it on — pair it with Syncthing or Nextcloud and your backups leave the phone too.",
+                    else "Daily backup is off. Pick a folder to turn it on, pair it with Syncthing or Nextcloud and your backups leave the phone too.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 OutlinedButton(onClick = { pickBackupFolder.launch(null) }) { Text("Choose backup folder") }
@@ -198,7 +198,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
                 OutlinedTextField(
                     value = key, onValueChange = { key = it },
-                    label = { Text(if (sync.accessKey.isBlank()) "Access key" else "Access key (saved — leave blank to keep)") },
+                    label = { Text(if (sync.accessKey.isBlank()) "Access key" else "Access key (saved, leave blank to keep)") },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedButton(onClick = {

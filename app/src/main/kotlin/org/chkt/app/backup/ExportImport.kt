@@ -63,7 +63,7 @@ object ExportImport {
             reminders.filter { it.listId == list.id }.forEach { r ->
                 sb.append("- [ ] **${r.title}**")
                 val whenText = describeWhen(r)
-                if (whenText.isNotBlank()) sb.append(" — $whenText")
+                if (whenText.isNotBlank()) sb.append(", $whenText")
                 if (r.notes.isNotBlank()) sb.append("\n  ${r.notes}")
                 sb.append("\n")
             }

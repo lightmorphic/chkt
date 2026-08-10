@@ -36,7 +36,7 @@ class SyncClient(private val context: Context) {
                 val conn = open(serverUrl.trimEnd('/') + "/api/ping", accessKey, "GET")
                 val code = conn.responseCode
                 when (code) {
-                    200 -> "Connected — the server answered."
+                    200 -> "Connected. The server answered."
                     401, 403 -> "The server refused the access key."
                     else -> "The server answered with an error (HTTP $code)."
                 }
@@ -51,7 +51,7 @@ class SyncClient(private val context: Context) {
         val config = repo.settings.syncConfig.first()
         if (!config.enabled) return@withContext "Sync is off."
         if (config.serverUrl.isBlank() || config.accessKey.isBlank()) {
-            return@withContext "Sync isn't fully set up — server address or access key missing."
+            return@withContext "Sync isn't fully set up. Server address or access key missing."
         }
 
         try {
@@ -101,7 +101,7 @@ class SyncClient(private val context: Context) {
             }
 
             repo.settings.setLastSync(response.optLong("now", System.currentTimeMillis()))
-            "Synced — $applied changes received."
+            "Synced. $applied changes received."
         } catch (e: Exception) {
             "Sync failed: ${e.message ?: "unknown error"}"
         }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
 import org.chkt.app.data.Repository
 
 /**
- * Alarms don't survive a reboot, a time change, or an app update on their own —
+ * Alarms don't survive a reboot, a time change, or an app update on their own,
  * this receiver re-arms every one of them whenever any of those happen.
  */
 class BootReceiver : BroadcastReceiver() {

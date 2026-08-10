@@ -79,7 +79,7 @@ class RecordActivity : ComponentActivity() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
             state.value = UiState.Problem(
                 "No speech recognition service is installed on this phone. " +
-                    "Install one (e.g. FUTO Voice Input from F-Droid) and try again — " +
+                    "Install one (e.g. FUTO Voice Input from F-Droid) and try again, " +
                     "or add reminders by hand in the app."
             )
             return
@@ -155,7 +155,7 @@ class RecordActivity : ComponentActivity() {
                         repeatRule = parsed.repeat.encode(),
                     )
                 )
-                "“${parsed.title}” — ${java.time.format.DateTimeFormatter.ofPattern("EEE d MMM HH:mm").format(parsed.dueAt)}"
+                "“${parsed.title}”, ${java.time.format.DateTimeFormatter.ofPattern("EEE d MMM HH:mm").format(parsed.dueAt)}"
             }
             state.value = UiState.Saved(summary)
         }

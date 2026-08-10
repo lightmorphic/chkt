@@ -81,7 +81,7 @@ class RepeatRuleTest {
     fun `every interval steps from the previous occurrence without drift`() {
         val rule = RepeatRule.Every(Duration.ofHours(6))
         val prev = zdt(2026, 8, 10, 6, 0)
-        // Fired late (07:30) — next should still be 12:00, not 13:30.
+        // Fired late (07:30), next should still be 12:00, not 13:30.
         val next = rule.nextAfter(prev, zdt(2026, 8, 10, 7, 30))
         assertEquals(zdt(2026, 8, 10, 12, 0), next)
     }
