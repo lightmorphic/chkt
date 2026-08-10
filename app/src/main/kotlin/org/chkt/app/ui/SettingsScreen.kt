@@ -126,6 +126,23 @@ fun SettingsScreen(onBack: () -> Unit) {
                         context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
                     }) { Text("Allow exact alarms") }
                 }
+                // Android 14 can silently refuse full-screen alarm takeover for
+                // sideloaded apps; without this the alarm still rings but stays
+                // a quiet notification instead of filling the screen.
+                val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                val fullScreenOk = Build.VERSION.SDK_INT < 34 || nm.canUseFullScreenIntent()
+                if (!fullScreenOk) {
+                    Text(
+                        "Full-screen alarms are blocked. Alerts will only appear as notifications until you allow them.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    OutlinedButton(onClick = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                                .setData(Uri.parse("package:" + context.packageName))
+                        )
+                    }) { Text("Allow full-screen alarms") }
+                }
                 val hasTts = remember { Speaker.engineInstalled(context) }
                 if (!hasTts) {
                     Text(
