@@ -27,3 +27,5 @@ First release.
   delete once dismissed, active toggle, and re-alerts every 1/2/5 minutes
   when unanswered with an automatic stop (15 min to 2 hours).
 - Alert sound chosen per phone in Settings (notification sound picker).
+- Update check against the project GitHub releases (manual, or opt-in
+  daily check with a notification) and one-tap install of new versions.

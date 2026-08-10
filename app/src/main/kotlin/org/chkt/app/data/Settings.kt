@@ -48,6 +48,14 @@ class AppSettings(private val context: Context) {
         val syncLast = longPreferencesKey("sync_last")
         val defaultListId = stringPreferencesKey("default_list_id")
         val alertSound = stringPreferencesKey("alert_sound")
+        val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
+    }
+
+    /** Daily update check; opt-in, off by default. */
+    val autoUpdateCheck: Flow<Boolean> = context.store.data.map { it[Keys.autoUpdateCheck] ?: false }
+
+    suspend fun setAutoUpdateCheck(enabled: Boolean) = context.store.edit {
+        it[Keys.autoUpdateCheck] = enabled
     }
 
     /** The notification sound Chkt alerts with, chosen per phone. Null = system default. */

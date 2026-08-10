@@ -25,7 +25,7 @@ No ads, no tracking, no Google services, no account. Donation-supported.
 - **Backups and portability**, daily backup to a folder you choose, plus
   export/import as plain JSON or markdown. Your data is yours.
 - **Optional sync**, off by default. Pair it with a self-hosted
-  [Chkt Server](https://github.com/FOSSCharlie/chkt-server) and your phone
+  [Chkt Server](https://github.com/lightmorphic/chkt-server) and your phone
   and browser stay matched.
 - **Simple statistics**, how consistently you complete what you set.
 

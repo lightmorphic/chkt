@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -258,6 +259,56 @@ fun SettingsScreen(onBack: () -> Unit) {
                         statusMessage = SyncClient(context).testConnection(server, effectiveKey)
                     }
                 }) { Text("Test connection") }
+            }
+
+            SettingsCard("App updates") {
+                Text(
+                    "You're on version " + org.chkt.app.BuildConfig.VERSION_NAME + ". Updates come from the Chkt project page; checking only happens when you ask (or daily, if you switch that on).",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                var checking by remember { mutableStateOf(false) }
+                var updateInfo by remember { mutableStateOf<org.chkt.app.update.Updater.UpdateInfo?>(null) }
+                var updateMessage by remember { mutableStateOf("") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(enabled = !checking, onClick = {
+                        checking = true; updateMessage = ""
+                        scope.launch {
+                            when (val result = org.chkt.app.update.Updater.check()) {
+                                is org.chkt.app.update.Updater.CheckResult.UpToDate ->
+                                    updateMessage = "You're up to date (${result.current})."
+                                is org.chkt.app.update.Updater.CheckResult.UpdateAvailable -> {
+                                    updateInfo = result.info
+                                    updateMessage = "Version ${result.info.version} is available."
+                                }
+                                is org.chkt.app.update.Updater.CheckResult.Failed ->
+                                    updateMessage = result.message
+                            }
+                            checking = false
+                        }
+                    }) { Text(if (checking) "Checking…" else "Check for updates") }
+                    updateInfo?.let { info ->
+                        Button(onClick = {
+                            updateMessage = "Downloading ${info.version}…"
+                            scope.launch {
+                                val error = org.chkt.app.update.Updater.downloadAndInstall(context, info)
+                                updateMessage = error ?: "Android will now ask you to confirm the install."
+                            }
+                        }) { Text("Update to ${info.version}") }
+                    }
+                }
+                if (updateMessage.isNotBlank()) {
+                    Text(updateMessage, style = MaterialTheme.typography.bodyMedium)
+                }
+                val autoCheck by repo.settings.autoUpdateCheck.collectAsState(initial = false)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = autoCheck, onCheckedChange = { enabled ->
+                        scope.launch {
+                            repo.settings.setAutoUpdateCheck(enabled)
+                            org.chkt.app.update.Updater.setAutoCheck(context, enabled)
+                        }
+                    })
+                    Text("  Check once a day and tell me", style = MaterialTheme.typography.bodyMedium)
+                }
             }
 
             if (statusMessage.isNotBlank()) {
