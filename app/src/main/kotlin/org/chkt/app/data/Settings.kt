@@ -47,6 +47,14 @@ class AppSettings(private val context: Context) {
         val syncKey = stringPreferencesKey("sync_key")
         val syncLast = longPreferencesKey("sync_last")
         val defaultListId = stringPreferencesKey("default_list_id")
+        val alertSound = stringPreferencesKey("alert_sound")
+    }
+
+    /** The notification sound Chkt alerts with, chosen per phone. Null = system default. */
+    val alertSoundUri: Flow<String?> = context.store.data.map { it[Keys.alertSound] }
+
+    suspend fun setAlertSound(uri: String?) = context.store.edit {
+        if (uri == null) it.remove(Keys.alertSound) else it[Keys.alertSound] = uri
     }
 
     val quietHours: Flow<QuietHours> = context.store.data.map { p ->

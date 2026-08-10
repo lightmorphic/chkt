@@ -39,6 +39,18 @@ data class Reminder(
     /** Play a short tone before the spoken text. */
     val preTone: Boolean = false,
     val enabled: Boolean = true,
+    /** Vibrate when the alert fires. */
+    val vibrate: Boolean = true,
+    /** If true this reminder stays quiet during Do Not Disturb; if false it cuts through. */
+    val respectDnd: Boolean = false,
+    /** Re-alert every this many minutes until answered. 0 = alert once only. */
+    val nagIntervalMinutes: Int = 0,
+    /** Stop re-alerting this many minutes after the first alert. */
+    val nagStopAfterMinutes: Int = 60,
+    /** When the current occurrence started nagging; null when not mid-nag. */
+    val nagStartedAt: Long? = null,
+    /** Remove the reminder entirely once it has been answered or dismissed. */
+    val deleteAfterDismissed: Boolean = false,
     /** When snoozed, the temporary fire time; cleared after firing. */
     val snoozedUntil: Long? = null,
     val locationTrigger: LocationTrigger = LocationTrigger.NONE,

@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.chkt.app.R
 import org.chkt.app.data.AlertMode
@@ -35,6 +36,7 @@ class AlertService : Service() {
     private var player: MediaPlayer? = null
     private var speaker: Speaker? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var alertSoundUri: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -64,9 +66,10 @@ class AlertService : Service() {
             val firedDueAt = reminder.snoozedUntil ?: reminder.dueAt ?: System.currentTimeMillis()
             val quiet = repo.settings.quietHoursNow().contains(LocalTime.now())
 
-            // Move repeating reminders to their next occurrence straight away,
-            // so a crash or force-stop can never lose the next alarm.
-            repo.fireAdvance(reminder)
+            // Handles nag re-alerts and arms whatever alarm comes next, so a
+            // crash or force-stop can never lose the schedule.
+            val shouldAlert = repo.onFired(reminder)
+            if (!shouldAlert) { stopSelf(); return@launch }
 
             if (quiet || reminder.alertMode == AlertMode.NOTIFY_ONLY) {
                 postNotification(reminder, firedDueAt, fullScreen = false, silentChannel = quiet)
@@ -75,6 +78,8 @@ class AlertService : Service() {
             }
 
             startForeground(NOTIF_ID, buildNotification(reminder, firedDueAt, fullScreen = true, silentChannel = false))
+            if (reminder.vibrate) vibrate()
+            alertSoundUri = repo.settings.alertSoundUri.first()
             playAlert(reminder)
         }
         return START_NOT_STICKY
@@ -86,33 +91,49 @@ class AlertService : Service() {
 
         val afterRing: () -> Unit = {
             if (speak) {
-                if (reminder.preTone) playTone { speakText(reminder) } else speakText(reminder)
+                if (reminder.preTone) playTone(reminder) { speakText(reminder) } else speakText(reminder)
             } else {
                 finishAfterDelay()
             }
         }
-        if (ring) playRingtone(afterRing) else afterRing()
+        if (ring) playRingtone(reminder, afterRing) else afterRing()
     }
 
-    private fun playRingtone(onDone: () -> Unit) {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+    private fun playRingtone(reminder: Reminder, onDone: () -> Unit) {
+        // The alert sound is the notification sound chosen in Chkt's settings
+        // on this phone; system default notification sound until one is picked.
+        val uri = alertSoundUri?.let { android.net.Uri.parse(it) }
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        playUri(uri, onDone)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        playUri(uri, respectDnd = reminder.respectDnd, onDone = onDone)
     }
 
-    private fun playTone(onDone: () -> Unit) {
+    private fun vibrate() {
+        val vibrator = if (android.os.Build.VERSION.SDK_INT >= 31) {
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+        }
+        val pattern = longArrayOf(0, 400, 250, 400, 250, 400)
+        vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1))
+    }
+
+    private fun playTone(reminder: Reminder, onDone: () -> Unit) {
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        playUri(uri, onDone)
+        playUri(uri, respectDnd = reminder.respectDnd, onDone = onDone)
     }
 
-    private fun playUri(uri: android.net.Uri?, onDone: () -> Unit) {
+    private fun playUri(uri: android.net.Uri?, respectDnd: Boolean, onDone: () -> Unit) {
         if (uri == null) { onDone(); return }
         try {
             player?.release()
             player = MediaPlayer().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        // Alarm-stream audio cuts through Do Not Disturb;
+                        // notification-stream audio lets DND silence it.
+                        .setUsage(if (respectDnd) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
@@ -128,7 +149,7 @@ class AlertService : Service() {
     }
 
     private fun speakText(reminder: Reminder) {
-        speaker = Speaker(this) { ready ->
+        speaker = Speaker(this, respectDnd = reminder.respectDnd) { ready ->
             if (!ready) { finishAfterDelay(); return@Speaker }
             val text = reminder.title + if (reminder.notes.isNotBlank()) ". ${reminder.notes}" else ""
             speaker?.speak(text, reminder.id) { finishAfterDelay() }
@@ -155,7 +176,7 @@ class AlertService : Service() {
         val dueAt = intent.getLongExtra(EXTRA_DUE_AT, 0)
         stopAudio()
         scope.launch {
-            Repository(applicationContext).logAction(id, dueAt, LogAction.DONE)
+            Repository(applicationContext).acknowledge(id, dueAt, LogAction.DONE)
             cancelNotification()
             stopSelf()
         }
@@ -176,7 +197,7 @@ class AlertService : Service() {
         val id = intent.getStringExtra(AlarmScheduler.EXTRA_REMINDER_ID) ?: return
         val dueAt = intent.getLongExtra(EXTRA_DUE_AT, 0)
         scope.launch {
-            Repository(applicationContext).logAction(id, dueAt, LogAction.MISSED)
+            Repository(applicationContext).acknowledge(id, dueAt, LogAction.MISSED)
             stopSelf()
         }
     }
@@ -195,7 +216,11 @@ class AlertService : Service() {
     }
 
     private fun buildNotification(reminder: Reminder, dueAt: Long, fullScreen: Boolean, silentChannel: Boolean): Notification {
-        val channel = if (silentChannel) Notifications.CHANNEL_SILENT else Notifications.CHANNEL_ALARMS
+        val channel = when {
+            silentChannel -> Notifications.CHANNEL_SILENT
+            reminder.respectDnd -> Notifications.CHANNEL_POLITE
+            else -> Notifications.CHANNEL_ALARMS
+        }
 
         fun serviceAction(action: String, extra: Int? = null): PendingIntent {
             val i = Intent(this, AlertService::class.java)

@@ -9,7 +9,11 @@ import android.speech.tts.UtteranceProgressListener
  * Thin wrapper over Android's system TTS. Chkt never bundles a voice engine,
  * it uses whatever engine the user has installed (Sherpa TTS recommended).
  */
-class Speaker(context: Context, private val onReady: (Boolean) -> Unit) {
+class Speaker(
+    context: Context,
+    private val respectDnd: Boolean = false,
+    private val onReady: (Boolean) -> Unit,
+) {
     private var tts: TextToSpeech? = null
     private var ready = false
 
@@ -19,7 +23,9 @@ class Speaker(context: Context, private val onReady: (Boolean) -> Unit) {
             if (ready) {
                 tts?.setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        // Alarm stream cuts through Do Not Disturb; the
+                        // notification stream lets DND keep things quiet.
+                        .setUsage(if (respectDnd) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )

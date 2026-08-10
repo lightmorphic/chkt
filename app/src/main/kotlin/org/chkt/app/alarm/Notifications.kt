@@ -7,6 +7,7 @@ import android.content.Context
 object Notifications {
     const val CHANNEL_ALARMS = "alarms"
     const val CHANNEL_SILENT = "silent"
+    const val CHANNEL_POLITE = "polite"
     const val CHANNEL_SERVICE = "service"
 
     fun createChannels(context: Context) {
@@ -31,12 +32,23 @@ object Notifications {
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply { setSound(null, null) }
 
+        // For reminders set to respect Do Not Disturb: same prominence, but
+        // no DND bypass, so the system can keep them quiet.
+        val polite = NotificationChannel(
+            CHANNEL_POLITE,
+            context.getString(org.chkt.app.R.string.notif_channel_polite),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            setSound(null, null)
+            enableVibration(true)
+        }
+
         val service = NotificationChannel(
             CHANNEL_SERVICE,
             context.getString(org.chkt.app.R.string.notif_channel_service),
             NotificationManager.IMPORTANCE_LOW,
         )
 
-        nm.createNotificationChannels(listOf(alarms, silent, service))
+        nm.createNotificationChannels(listOf(alarms, silent, polite, service))
     }
 }

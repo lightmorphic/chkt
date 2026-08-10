@@ -133,6 +133,11 @@ class SyncClient(private val context: Context) {
                 .getOrDefault(AlertMode.RING_AND_SPEAK),
             preTone = o.optBoolean("preTone", false),
             enabled = o.optBoolean("enabled", true),
+            vibrate = o.optBoolean("vibrate", true),
+            respectDnd = o.optBoolean("respectDnd", false),
+            nagIntervalMinutes = o.optInt("nagIntervalMinutes", 0),
+            nagStopAfterMinutes = o.optInt("nagStopAfterMinutes", 60),
+            deleteAfterDismissed = o.optBoolean("deleteAfterDismissed", false),
             snoozedUntil = if (o.isNull("snoozedUntil")) null else o.getLong("snoozedUntil"),
             locationTrigger = runCatching { LocationTrigger.valueOf(o.optString("locationTrigger")) }
                 .getOrDefault(LocationTrigger.NONE),
@@ -167,6 +172,11 @@ class SyncClient(private val context: Context) {
         put("alertMode", r.alertMode.name)
         put("preTone", r.preTone)
         put("enabled", r.enabled)
+        put("vibrate", r.vibrate)
+        put("respectDnd", r.respectDnd)
+        put("nagIntervalMinutes", r.nagIntervalMinutes)
+        put("nagStopAfterMinutes", r.nagStopAfterMinutes)
+        put("deleteAfterDismissed", r.deleteAfterDismissed)
         put("snoozedUntil", r.snoozedUntil ?: JSONObject.NULL)
         put("locationTrigger", r.locationTrigger.name)
         put("latitude", r.latitude ?: JSONObject.NULL)

@@ -33,6 +33,24 @@ class AlarmScheduler(private val context: Context) {
         )
     }
 
+    /** Arm the alarm at an explicit time, regardless of the reminder's dueAt.
+     *  Used for nag re-alerts ("keep reminding me every 5 minutes"). */
+    fun scheduleAt(reminder: Reminder, fireAtMillis: Long) {
+        cancel(reminder.id)
+        if (!reminder.enabled || reminder.deletedAt != null) return
+        if (fireAtMillis <= System.currentTimeMillis()) return
+        if (!canScheduleExact()) return
+        val showIntent = PendingIntent.getActivity(
+            context, reminder.id.hashCode(),
+            context.packageManager.getLaunchIntentForPackage(context.packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        alarmManager.setAlarmClock(
+            AlarmManager.AlarmClockInfo(fireAtMillis, showIntent),
+            firePendingIntent(reminder.id),
+        )
+    }
+
     fun cancel(reminderId: String) {
         alarmManager.cancel(firePendingIntent(reminderId))
     }

@@ -155,6 +155,39 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
+            SettingsCard("Alert sound") {
+                Text(
+                    "The notification sound Chkt alerts with on this phone. Reminders set to ring use this before any speech.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                val alertSound by repo.settings.alertSoundUri.collectAsState(initial = null)
+                val pickSound = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartActivityForResult()
+                ) { result ->
+                    if (result.resultCode == android.app.Activity.RESULT_OK) {
+                        val uri: Uri? = if (Build.VERSION.SDK_INT >= 33) {
+                            result.data?.getParcelableExtra(
+                                android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            result.data?.getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+                        }
+                        scope.launch { repo.settings.setAlertSound(uri?.toString()) }
+                    }
+                }
+                OutlinedButton(onClick = {
+                    val intent = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
+                            android.media.RingtoneManager.TYPE_NOTIFICATION)
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "Chkt alert sound")
+                    alertSound?.let {
+                        intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(it))
+                    }
+                    pickSound.launch(intent)
+                }) { Text(if (alertSound == null) "Choose alert sound (using system default)" else "Change alert sound") }
+            }
+
             SettingsCard("Quiet hours") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = quiet.enabled, onCheckedChange = {

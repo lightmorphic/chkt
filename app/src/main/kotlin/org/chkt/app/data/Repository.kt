@@ -69,15 +69,58 @@ class Repository(
         db.logs().insert(
             CompletionLog(reminderId = id, dueAt = reminder.dueAt ?: 0, action = LogAction.SNOOZED)
         )
-        val snoozed = reminder.copy(snoozedUntil = untilMillis, updatedAt = System.currentTimeMillis())
+        val snoozed = reminder.copy(snoozedUntil = untilMillis, nagStartedAt = null, updatedAt = System.currentTimeMillis())
         db.reminders().upsert(snoozed)
         scheduler.schedule(snoozed)
     }
 
     /**
-     * Called the moment an alarm fires: move a repeating reminder to its next
-     * occurrence (or disable a one-off) and clear any snooze, so the next
-     * alarm is armed even if the alert is never acted on.
+     * Called when an alarm fires. Decides between three paths:
+     *  - nagging off: move straight to the next occurrence (or disable a one-off)
+     *  - nagging on, within the stop window: keep the occurrence live and arm
+     *    the next re-alert
+     *  - nagging on, stop window passed: give up, log it missed, move on
+     * Returns true when the alert should actually sound this time.
+     */
+    suspend fun onFired(reminder: Reminder): Boolean {
+        val now = System.currentTimeMillis()
+        if (reminder.nagIntervalMinutes <= 0) {
+            fireAdvance(reminder)
+            return true
+        }
+        val startedAt = reminder.nagStartedAt
+        if (startedAt == null) {
+            val nagging = reminder.copy(nagStartedAt = now, updatedAt = now)
+            db.reminders().upsert(nagging)
+            scheduler.scheduleAt(nagging, now + reminder.nagIntervalMinutes * 60_000L)
+            return true
+        }
+        if (now - startedAt >= reminder.nagStopAfterMinutes * 60_000L) {
+            logAction(reminder.id, reminder.snoozedUntil ?: reminder.dueAt ?: now, LogAction.MISSED)
+            fireAdvance(reminder)
+            return false
+        }
+        scheduler.scheduleAt(reminder, now + reminder.nagIntervalMinutes * 60_000L)
+        return true
+    }
+
+    /**
+     * The user answered the alert (Done or dismissed it): log it, stop any
+     * nagging, move to the next occurrence, and honour delete-after-dismissed.
+     */
+    suspend fun acknowledge(id: String, dueAt: Long, action: LogAction) {
+        val reminder = db.reminders().byId(id) ?: return
+        logAction(id, dueAt, action)
+        if (reminder.deleteAfterDismissed) {
+            deleteReminder(id)
+            return
+        }
+        fireAdvance(reminder)
+    }
+
+    /**
+     * Move a fired reminder to its next occurrence (or disable a one-off),
+     * clearing any snooze and nag state.
      */
     suspend fun fireAdvance(reminder: Reminder) {
         val zone = ZoneId.systemDefault()
@@ -88,6 +131,7 @@ class Repository(
             dueAt = next?.toInstant()?.toEpochMilli() ?: reminder.dueAt,
             enabled = if (next == null && reminder.locationTrigger == LocationTrigger.NONE) false else reminder.enabled,
             snoozedUntil = null,
+            nagStartedAt = null,
             updatedAt = System.currentTimeMillis(),
         )
         db.reminders().upsert(updated)

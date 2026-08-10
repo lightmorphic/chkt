@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,7 +57,7 @@ import java.time.format.DateTimeFormatter
  * question at a time, the way Prodder does. What? When? What time?
  * Repeat? How should it alert you? Then a summary you confirm.
  */
-private enum class Step { WHAT, WHEN, TIME, REPEAT, ALERT, CONFIRM }
+private enum class Step { WHAT, WHEN, TIME, REPEAT, ALERT, NAG, EXTRAS, CONFIRM }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,10 +77,19 @@ fun NewReminderWizard(
     var rule by remember { mutableStateOf<RepeatRule>(RepeatRule.None) }
     var alertMode by rememberSaveable { mutableStateOf(AlertMode.RING_AND_SPEAK) }
     var preTone by rememberSaveable { mutableStateOf(false) }
+    var vibrate by rememberSaveable { mutableStateOf(true) }
+    var respectDnd by rememberSaveable { mutableStateOf(false) }
+    var nagInterval by rememberSaveable { mutableStateOf(0) }
+    var nagStopAfter by rememberSaveable { mutableStateOf(60) }
+    var deleteAfterDismissed by rememberSaveable { mutableStateOf(false) }
+    var active by rememberSaveable { mutableStateOf(true) }
+    var chosenListId by rememberSaveable { mutableStateOf(listId) }
     var locationTrigger by rememberSaveable { mutableStateOf(LocationTrigger.NONE) }
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
     var radius by remember { mutableStateOf(150f) }
+
+    val lists by repo.db.lists().observeAll().collectAsState(initial = emptyList())
 
     val atAPlace = locationTrigger != LocationTrigger.NONE
 
@@ -90,7 +100,9 @@ fun NewReminderWizard(
             Step.TIME -> Step.WHEN
             Step.REPEAT -> if (atAPlace) Step.WHEN else Step.TIME
             Step.ALERT -> if (atAPlace) Step.WHEN else Step.REPEAT
-            Step.CONFIRM -> Step.ALERT
+            Step.NAG -> Step.ALERT
+            Step.EXTRAS -> Step.NAG
+            Step.CONFIRM -> Step.EXTRAS
         }
     }
 
@@ -101,13 +113,19 @@ fun NewReminderWizard(
         scope.launch {
             repo.saveReminder(
                 Reminder(
-                    listId = listId,
+                    listId = chosenListId,
                     title = title.trim(),
                     notes = notes.trim(),
                     dueAt = dueAt,
                     repeatRule = if (atAPlace) "" else rule.encode(),
                     alertMode = alertMode,
                     preTone = preTone,
+                    enabled = active,
+                    vibrate = vibrate,
+                    respectDnd = respectDnd,
+                    nagIntervalMinutes = nagInterval,
+                    nagStopAfterMinutes = nagStopAfter,
+                    deleteAfterDismissed = deleteAfterDismissed,
                     locationTrigger = locationTrigger,
                     latitude = latitude,
                     longitude = longitude,
@@ -208,12 +226,75 @@ fun NewReminderWizard(
                         Switch(checked = preTone, onCheckedChange = { preTone = it })
                         Text("  Play a tone before speaking", style = MaterialTheme.typography.bodyMedium)
                     }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = vibrate, onCheckedChange = { vibrate = it })
+                        Text("  Vibrate", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = respectDnd, onCheckedChange = { respectDnd = it })
+                        Text("  Stay quiet during Do Not Disturb", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text(
+                        "The alert sound is the one picked in Chkt's settings on this phone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    NextButton(enabled = true) { step = Step.NAG }
+                }
+
+                Step.NAG -> {
+                    Question("If you don't answer, should I keep reminding you?")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = nagInterval == 0, onClick = { nagInterval = 0 }, label = { Text("Alert once") })
+                        FilterChip(selected = nagInterval == 1, onClick = { nagInterval = 1 }, label = { Text("Every 1 min") })
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = nagInterval == 2, onClick = { nagInterval = 2 }, label = { Text("Every 2 min") })
+                        FilterChip(selected = nagInterval == 5, onClick = { nagInterval = 5 }, label = { Text("Every 5 min") })
+                    }
+                    if (nagInterval > 0) {
+                        Text("And give up after:", style = MaterialTheme.typography.bodyLarge)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(15, 30, 60, 120).forEach { minutes ->
+                                FilterChip(
+                                    selected = nagStopAfter == minutes,
+                                    onClick = { nagStopAfter = minutes },
+                                    label = { Text(if (minutes < 60) "$minutes min" else "${minutes / 60} hr" + if (minutes > 60) "s" else "") },
+                                )
+                            }
+                        }
+                    }
+                    NextButton(enabled = true) { step = Step.EXTRAS }
+                }
+
+                Step.EXTRAS -> {
+                    Question("A few last choices.")
+                    if (lists.size > 1) {
+                        Text("Which list does it belong in?", style = MaterialTheme.typography.bodyLarge)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            lists.forEach { list ->
+                                FilterChip(
+                                    selected = chosenListId == list.id,
+                                    onClick = { chosenListId = list.id },
+                                    label = { Text(list.name) },
+                                )
+                            }
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = deleteAfterDismissed, onCheckedChange = { deleteAfterDismissed = it })
+                        Text("  Delete the reminder once dismissed", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = active, onCheckedChange = { active = it })
+                        Text("  Active", style = MaterialTheme.typography.bodyMedium)
+                    }
                     NextButton(enabled = true) { step = Step.CONFIRM }
                 }
 
                 Step.CONFIRM -> {
                     Question("All set?")
-                    Text(summaryText(title, notes, date, time, rule, alertMode, preTone, locationTrigger),
+                    Text(summaryText(title, notes, date, time, rule, alertMode, preTone, locationTrigger, nagInterval, nagStopAfter, active),
                         style = MaterialTheme.typography.bodyLarge)
                     Button(
                         onClick = ::save,
@@ -430,6 +511,9 @@ private fun summaryText(
     mode: AlertMode,
     preTone: Boolean,
     trigger: LocationTrigger,
+    nagInterval: Int = 0,
+    nagStopAfter: Int = 60,
+    active: Boolean = true,
 ): String {
     val whenPart = when {
         trigger == LocationTrigger.ARRIVE -> "when you arrive"
@@ -451,6 +535,11 @@ private fun summaryText(
         AlertMode.RING_ONLY -> "I'll ring"
         AlertMode.NOTIFY_ONLY -> "You'll get a silent notification"
     } + if (preTone && mode != AlertMode.RING_ONLY && mode != AlertMode.NOTIFY_ONLY) ", with a tone first." else "."
+    val nagPart = if (nagInterval > 0) {
+        " If you don't answer I'll try again every $nagInterval min and give up after " +
+            (if (nagStopAfter < 60) "$nagStopAfter minutes." else "${nagStopAfter / 60} hour" + (if (nagStopAfter > 60) "s." else "."))
+    } else ""
+    val activePart = if (!active) "\n\nSaved switched off, flip it on when ready." else ""
     val notesPart = if (notes.isNotBlank()) "\n\nExtra words: $notes" else ""
-    return "“$title”\n$whenPart$repeatPart.\n\n$alertPart$notesPart"
+    return "“$title”\n$whenPart$repeatPart.\n\n$alertPart$nagPart$notesPart$activePart"
 }

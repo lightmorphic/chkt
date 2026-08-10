@@ -18,7 +18,7 @@ class Converters {
 
 @Database(
     entities = [ReminderList::class, Reminder::class, CompletionLog::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -36,7 +36,11 @@ abstract class ChktDatabase : RoomDatabase() {
                     context.applicationContext,
                     ChktDatabase::class.java,
                     "chkt.db",
-                ).build().also { instance = it }
+                )
+                    // Pre-release only: no shipped installs exist, so schema
+                    // changes rebuild the database instead of migrating.
+                    .fallbackToDestructiveMigration()
+                    .build().also { instance = it }
             }
     }
 }

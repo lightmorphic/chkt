@@ -73,6 +73,11 @@ fun EditReminderScreen(
     var rule by remember { mutableStateOf<RepeatRule>(RepeatRule.None) }
     var alertMode by remember { mutableStateOf(AlertMode.RING_AND_SPEAK) }
     var preTone by remember { mutableStateOf(false) }
+    var vibrate by remember { mutableStateOf(true) }
+    var respectDnd by remember { mutableStateOf(false) }
+    var nagInterval by remember { mutableStateOf(0) }
+    var nagStopAfter by remember { mutableStateOf(60) }
+    var deleteAfterDismissed by remember { mutableStateOf(false) }
     var locationTrigger by remember { mutableStateOf(LocationTrigger.NONE) }
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
@@ -91,6 +96,9 @@ fun EditReminderScreen(
                 } ?: run { date = null }
                 rule = RepeatRule.decode(r.repeatRule)
                 alertMode = r.alertMode; preTone = r.preTone
+                vibrate = r.vibrate; respectDnd = r.respectDnd
+                nagInterval = r.nagIntervalMinutes; nagStopAfter = r.nagStopAfterMinutes
+                deleteAfterDismissed = r.deleteAfterDismissed
                 locationTrigger = r.locationTrigger
                 latitude = r.latitude; longitude = r.longitude; radius = r.radiusMetres
             }
@@ -110,6 +118,12 @@ fun EditReminderScreen(
             repeatRule = rule.encode(),
             alertMode = alertMode,
             preTone = preTone,
+            vibrate = vibrate,
+            respectDnd = respectDnd,
+            nagIntervalMinutes = nagInterval,
+            nagStopAfterMinutes = nagStopAfter,
+            nagStartedAt = null,
+            deleteAfterDismissed = deleteAfterDismissed,
             enabled = true,
             snoozedUntil = null,
             locationTrigger = locationTrigger,
@@ -165,6 +179,37 @@ fun EditReminderScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = preTone, onCheckedChange = { preTone = it })
                 Text("  Play a tone before speaking", style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = vibrate, onCheckedChange = { vibrate = it })
+                Text("  Vibrate", style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = respectDnd, onCheckedChange = { respectDnd = it })
+                Text("  Stay quiet during Do Not Disturb", style = MaterialTheme.typography.bodyMedium)
+            }
+
+            SectionLabel("If not answered")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = nagInterval == 0, onClick = { nagInterval = 0 }, label = { Text("Alert once") })
+                FilterChip(selected = nagInterval == 1, onClick = { nagInterval = 1 }, label = { Text("1 min") })
+                FilterChip(selected = nagInterval == 2, onClick = { nagInterval = 2 }, label = { Text("2 min") })
+                FilterChip(selected = nagInterval == 5, onClick = { nagInterval = 5 }, label = { Text("5 min") })
+            }
+            if (nagInterval > 0) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(15, 30, 60, 120).forEach { minutes ->
+                        FilterChip(
+                            selected = nagStopAfter == minutes,
+                            onClick = { nagStopAfter = minutes },
+                            label = { Text(if (minutes < 60) "stop after $minutes min" else "stop after ${minutes / 60} hr") },
+                        )
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = deleteAfterDismissed, onCheckedChange = { deleteAfterDismissed = it })
+                Text("  Delete once dismissed", style = MaterialTheme.typography.bodyMedium)
             }
 
             SectionLabel("Location")

@@ -21,3 +21,9 @@ First release.
 - Daily backups to a user-chosen folder; JSON and markdown export; JSON import.
 - Optional sync with a self-hosted Chkt Server (off by default).
 - Completion statistics for the last 30 days.
+- Guided one-question-at-a-time flow for creating reminders, ending in a
+  plain-words summary.
+- Per-reminder controls: vibration, respect-or-cut-through Do Not Disturb,
+  delete once dismissed, active toggle, and re-alerts every 1/2/5 minutes
+  when unanswered with an automatic stop (15 min to 2 hours).
+- Alert sound chosen per phone in Settings (notification sound picker).
