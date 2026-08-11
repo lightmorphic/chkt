@@ -31,9 +31,9 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             // Replace today's backup if it already exists.
             tree.findFile(name)?.delete()
             val file = tree.createFile("application/json", name) ?: return Result.retry()
-            val (lists, reminders) = ExportImport.snapshot(repo)
+            val reminders = ExportImport.snapshot(repo)
             applicationContext.contentResolver.openOutputStream(file.uri, "wt")?.use {
-                it.write(ExportImport.exportJson(lists, reminders).toByteArray())
+                it.write(ExportImport.exportJson(reminders).toByteArray())
             }
             prune(tree)
             Result.success()

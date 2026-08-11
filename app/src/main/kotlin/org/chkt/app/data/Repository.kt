@@ -19,30 +19,6 @@ class Repository(
 ) {
     private val scheduler = AlarmScheduler(context)
 
-    suspend fun ensureDefaultList(): ReminderList {
-        val lists = db.lists()
-        if (lists.count() == 0) {
-            val list = ReminderList(name = "Reminders")
-            lists.upsert(list)
-            settings.setDefaultList(list.id)
-            return list
-        }
-        // Any surviving list will do as a fallback target.
-        return lists.changedSince(0).first { it.deletedAt == null }
-    }
-
-    suspend fun saveList(list: ReminderList) {
-        db.lists().upsert(list.copy(updatedAt = System.currentTimeMillis()))
-    }
-
-    suspend fun deleteList(id: String) {
-        db.lists().softDelete(id)
-        // Orphan its reminders too, so they stop firing.
-        db.reminders().changedSince(0)
-            .filter { it.listId == id && it.deletedAt == null }
-            .forEach { deleteReminder(it.id) }
-    }
-
     suspend fun saveReminder(reminder: Reminder) {
         val stamped = reminder.copy(updatedAt = System.currentTimeMillis())
         db.reminders().upsert(stamped)

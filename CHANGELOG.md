@@ -9,6 +9,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/); versions follow
 First release.
 
 ### Added
+- Tags replace lists: a reminder wears any number of free-form tags, and
+  the home screen shows everything coming up in time order with tag
+  filtering. Version 1 export files still import (list names become tags).
+- Lightmorphic brand yellow as the app accent.
+- The voice widget treats a bare hour ("remind me at 10") as the next ten
+  o'clock, morning or evening, whichever comes first.
 - Reminder lists with per-reminder alert styles: ringtone + spoken, ringtone
   only, spoken only, notification only; optional tone before speech.
 - Exact alarms with full-screen alerts, Do Not Disturb bypass, reboot

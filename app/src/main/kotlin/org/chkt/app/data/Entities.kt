@@ -5,30 +5,22 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-/**
- * Primary keys are UUID strings so records created on different devices
- * can merge during sync without id collisions.
- */
-@Entity(tableName = "lists")
-data class ReminderList(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val position: Int = 0,
-    val updatedAt: Long = System.currentTimeMillis(),
-    val deletedAt: Long? = null,
-)
-
 enum class AlertMode { RING_AND_SPEAK, RING_ONLY, SPEAK_ONLY, NOTIFY_ONLY }
 
 enum class LocationTrigger { NONE, ARRIVE, LEAVE }
 
+/**
+ * Primary keys are UUID strings so records created on different devices
+ * can merge during sync without id collisions.
+ */
 @Entity(
     tableName = "reminders",
-    indices = [Index("listId"), Index("dueAt")],
+    indices = [Index("dueAt")],
 )
 data class Reminder(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val listId: String,
+    /** Free-form tags, comma separated. Empty = untagged. */
+    val tags: String = "",
     val title: String,
     val notes: String = "",
     /** Next time this reminder should fire, epoch millis. Null for location-only reminders. */

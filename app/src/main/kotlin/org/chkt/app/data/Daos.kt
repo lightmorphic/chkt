@@ -8,33 +8,9 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface ListDao {
-    @Query("SELECT * FROM lists WHERE deletedAt IS NULL ORDER BY position, name")
-    fun observeAll(): Flow<List<ReminderList>>
-
-    @Query("SELECT * FROM lists WHERE id = :id")
-    suspend fun byId(id: String): ReminderList?
-
-    @Upsert
-    suspend fun upsert(list: ReminderList)
-
-    @Query("UPDATE lists SET deletedAt = :at, updatedAt = :at WHERE id = :id")
-    suspend fun softDelete(id: String, at: Long = System.currentTimeMillis())
-
-    @Query("SELECT * FROM lists WHERE updatedAt > :since")
-    suspend fun changedSince(since: Long): List<ReminderList>
-
-    @Query("SELECT COUNT(*) FROM lists WHERE deletedAt IS NULL")
-    suspend fun count(): Int
-}
-
-@Dao
 interface ReminderDao {
-    @Query("SELECT * FROM reminders WHERE listId = :listId AND deletedAt IS NULL ORDER BY dueAt IS NULL, dueAt")
-    fun observeForList(listId: String): Flow<List<Reminder>>
-
-    @Query("SELECT * FROM reminders WHERE deletedAt IS NULL AND enabled = 1 ORDER BY dueAt IS NULL, dueAt")
-    fun observeActive(): Flow<List<Reminder>>
+    @Query("SELECT * FROM reminders WHERE deletedAt IS NULL ORDER BY enabled DESC, dueAt IS NULL, COALESCE(snoozedUntil, dueAt)")
+    fun observeAll(): Flow<List<Reminder>>
 
     @Query("SELECT * FROM reminders WHERE id = :id")
     suspend fun byId(id: String): Reminder?
@@ -65,7 +41,4 @@ interface LogDao {
 
     @Query("SELECT * FROM completion_log WHERE at > :since")
     suspend fun changedSince(since: Long): List<CompletionLog>
-
-    @Query("SELECT COUNT(*) FROM completion_log WHERE action = :action AND at >= :since")
-    suspend fun countSince(action: LogAction, since: Long): Int
 }

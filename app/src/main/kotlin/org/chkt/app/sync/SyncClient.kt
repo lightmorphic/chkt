@@ -10,7 +10,6 @@ import org.chkt.app.data.CompletionLog
 import org.chkt.app.data.LocationTrigger
 import org.chkt.app.data.LogAction
 import org.chkt.app.data.Reminder
-import org.chkt.app.data.ReminderList
 import org.chkt.app.data.Repository
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,7 +19,7 @@ import java.net.URL
 /**
  * Talks to a Chkt Server. One endpoint does the whole job:
  *
- *   POST /api/sync  { since, lists, reminders, logs }  → server changes since `since`
+ *   POST /api/sync  { since, reminders, logs }  → server changes since `since`
  *
  * Both sides keep every record's updatedAt and deleted tombstones; whoever
  * edited last wins, deletions never resurrect, and completion logs are
@@ -58,9 +57,6 @@ class SyncClient(private val context: Context) {
             val since = config.lastSyncAt
             val body = JSONObject().apply {
                 put("since", since)
-                put("lists", JSONArray().apply {
-                    repo.db.lists().changedSince(since).forEach { put(listToJson(it)) }
-                })
                 put("reminders", JSONArray().apply {
                     repo.db.reminders().changedSince(since).forEach { put(reminderToJson(it)) }
                 })
@@ -77,10 +73,6 @@ class SyncClient(private val context: Context) {
             val response = JSONObject(conn.inputStream.use { it.readBytes().decodeToString() })
             var applied = 0
 
-            val listsArr = response.optJSONArray("lists") ?: JSONArray()
-            for (i in 0 until listsArr.length()) {
-                if (applyList(repo, listsArr.getJSONObject(i))) applied++
-            }
             val remArr = response.optJSONArray("reminders") ?: JSONArray()
             for (i in 0 until remArr.length()) {
                 if (applyReminder(repo, remArr.getJSONObject(i))) applied++
@@ -107,24 +99,10 @@ class SyncClient(private val context: Context) {
         }
     }
 
-    private suspend fun applyList(repo: Repository, o: JSONObject): Boolean {
-        val incoming = ReminderList(
-            id = o.getString("id"),
-            name = o.getString("name"),
-            position = o.optInt("position", 0),
-            updatedAt = o.getLong("updatedAt"),
-            deletedAt = if (o.isNull("deletedAt")) null else o.getLong("deletedAt"),
-        )
-        val local = repo.db.lists().byId(incoming.id)
-        if (local != null && local.updatedAt >= incoming.updatedAt) return false
-        repo.db.lists().upsert(incoming)
-        return true
-    }
-
     private suspend fun applyReminder(repo: Repository, o: JSONObject): Boolean {
         val incoming = Reminder(
             id = o.getString("id"),
-            listId = o.getString("listId"),
+            tags = o.optString("tags", ""),
             title = o.getString("title"),
             notes = o.optString("notes", ""),
             dueAt = if (o.isNull("dueAt")) null else o.getLong("dueAt"),
@@ -158,14 +136,8 @@ class SyncClient(private val context: Context) {
         return true
     }
 
-    private fun listToJson(l: ReminderList) = JSONObject().apply {
-        put("id", l.id); put("name", l.name); put("position", l.position)
-        put("updatedAt", l.updatedAt)
-        put("deletedAt", l.deletedAt ?: JSONObject.NULL)
-    }
-
     private fun reminderToJson(r: Reminder) = JSONObject().apply {
-        put("id", r.id); put("listId", r.listId)
+        put("id", r.id); put("tags", r.tags)
         put("title", r.title); put("notes", r.notes)
         put("dueAt", r.dueAt ?: JSONObject.NULL)
         put("repeatRule", r.repeatRule)

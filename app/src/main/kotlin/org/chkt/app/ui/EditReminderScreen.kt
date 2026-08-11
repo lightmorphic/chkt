@@ -57,7 +57,6 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditReminderScreen(
-    listId: String,
     reminderId: String?,
     onDone: () -> Unit,
 ) {
@@ -80,8 +79,11 @@ fun EditReminderScreen(
     var nagStopAfter by remember { mutableStateOf(60) }
     var deleteAfterDismissed by remember { mutableStateOf(false) }
     var active by remember { mutableStateOf(true) }
-    var chosenListId by remember { mutableStateOf(listId) }
-    val allLists by repo.db.lists().observeAll().collectAsState(initial = emptyList())
+    var tags by remember { mutableStateOf("") }
+    val allReminders by repo.db.reminders().observeAll().collectAsState(initial = emptyList())
+    val knownTags = remember(allReminders) {
+        allReminders.flatMap { it.tagList() }.distinct().sorted()
+    }
     var locationTrigger by remember { mutableStateOf(LocationTrigger.NONE) }
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
@@ -104,7 +106,7 @@ fun EditReminderScreen(
                 nagInterval = r.nagIntervalMinutes; nagStopAfter = r.nagStopAfterMinutes
                 deleteAfterDismissed = r.deleteAfterDismissed
                 active = r.enabled
-                chosenListId = r.listId
+                tags = r.tags
                 locationTrigger = r.locationTrigger
                 latitude = r.latitude; longitude = r.longitude; radius = r.radiusMetres
             }
@@ -117,8 +119,8 @@ fun EditReminderScreen(
             it.atTime(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         }
         val base = original
-        val reminder = (base ?: Reminder(listId = chosenListId, title = "", dueAt = null)).copy(
-            listId = chosenListId,
+        val reminder = (base ?: Reminder(title = "", dueAt = null)).copy(
+            tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }.joinToString(", "),
             title = title.trim(),
             notes = notes.trim(),
             dueAt = dueAt,
@@ -171,14 +173,23 @@ fun EditReminderScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (allLists.size > 1) {
-                SectionLabel("List")
+            SectionLabel("Tags")
+            OutlinedTextField(
+                value = tags, onValueChange = { tags = it },
+                label = { Text("Tags, separated by commas (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (knownTags.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    allLists.forEach { l ->
+                    knownTags.take(6).forEach { tag ->
+                        val present = tag in tags.split(",").map { it.trim() }
                         FilterChip(
-                            selected = chosenListId == l.id,
-                            onClick = { chosenListId = l.id },
-                            label = { Text(l.name) },
+                            selected = present,
+                            onClick = {
+                                val current = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                                tags = (if (present) current - tag else current + tag).joinToString(", ")
+                            },
+                            label = { Text(tag) },
                         )
                     }
                 }

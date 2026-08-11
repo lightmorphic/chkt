@@ -46,7 +46,6 @@ class AppSettings(private val context: Context) {
         val syncServer = stringPreferencesKey("sync_server")
         val syncKey = stringPreferencesKey("sync_key")
         val syncLast = longPreferencesKey("sync_last")
-        val defaultListId = stringPreferencesKey("default_list_id")
         val alertSound = stringPreferencesKey("alert_sound")
         val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
     }
@@ -85,7 +84,6 @@ class AppSettings(private val context: Context) {
         )
     }
 
-    val defaultListId: Flow<String?> = context.store.data.map { it[Keys.defaultListId] }
 
     suspend fun quietHoursNow(): QuietHours = quietHours.first()
 
@@ -109,5 +107,4 @@ class AppSettings(private val context: Context) {
 
     suspend fun setLastSync(at: Long) = context.store.edit { it[Keys.syncLast] = at }
 
-    suspend fun setDefaultList(id: String) = context.store.edit { it[Keys.defaultListId] = id }
 }

@@ -1,39 +1,47 @@
 package org.chkt.app.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 
+// Lightmorphic brand colours: yellow is the accent, navy grounds it, and the
+// Chkt green stays for the identity marks (icon, tick).
+private val BrandYellow = Color(0xFFFBC711)
+private val OnYellow = Color(0xFF645007)
+private val YellowContainerLight = Color(0xFFFFF8E2)
+private val OnYellowContainerLight = Color(0xFF5F4C06)
+private val YellowContainerDark = Color(0xFF4B3C05)
+private val OnYellowContainerDark = Color(0xFFFDE694)
+private val BrandNavy = Color(0xFF111827)
 private val ChktGreen = Color(0xFF1B5E4A)
-private val ChktGreenLight = Color(0xFF2E8B6F)
-
-private val DarkColors = darkColorScheme(
-    primary = ChktGreenLight,
-    secondary = ChktGreen,
-)
 
 private val LightColors = lightColorScheme(
-    primary = ChktGreen,
-    secondary = ChktGreenLight,
+    primary = BrandYellow,
+    onPrimary = OnYellow,
+    primaryContainer = YellowContainerLight,
+    onPrimaryContainer = OnYellowContainerLight,
+    secondary = BrandNavy,
+    secondaryContainer = YellowContainerLight,
+    onSecondaryContainer = OnYellowContainerLight,
+    tertiary = ChktGreen,
+)
+
+private val DarkColors = darkColorScheme(
+    primary = BrandYellow,
+    onPrimary = OnYellow,
+    primaryContainer = YellowContainerDark,
+    onPrimaryContainer = OnYellowContainerDark,
+    secondary = Color(0xFF9CA3AF),
+    secondaryContainer = YellowContainerDark,
+    onSecondaryContainer = OnYellowContainerDark,
+    tertiary = Color(0xFF2E8B6F),
 )
 
 @Composable
 fun ChktTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val colorScheme = when {
-        Build.VERSION.SDK_INT >= 31 -> {
-            val context = LocalContext.current
-            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        dark -> DarkColors
-        else -> LightColors
-    }
+    val colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors
     MaterialTheme(colorScheme = colorScheme, content = content)
 }

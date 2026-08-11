@@ -146,10 +146,8 @@ class RecordActivity : ComponentActivity() {
         scope.launch {
             val summary = withContext(Dispatchers.IO) {
                 val repo = Repository(applicationContext)
-                val list = repo.ensureDefaultList()
                 repo.saveReminder(
                     Reminder(
-                        listId = list.id,
                         title = parsed.title.replaceFirstChar(Char::uppercase),
                         dueAt = parsed.dueAt.toInstant().toEpochMilli(),
                         repeatRule = parsed.repeat.encode(),

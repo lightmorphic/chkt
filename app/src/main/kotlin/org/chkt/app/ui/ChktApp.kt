@@ -23,66 +23,46 @@ fun ChktApp() {
     val navController = rememberNavController()
     // First run (or missing permissions): walk through setup before anything else.
     val startDestination = remember {
-        if (SetupCheck.allEssentialGranted(context)) "lists" else "setup"
+        if (SetupCheck.allEssentialGranted(context)) "home" else "setup"
     }
 
     CompositionLocalProvider(LocalRepository provides repository) {
         NavHost(navController = navController, startDestination = startDestination) {
-            composable("lists") {
-                ListsScreen(
-                    onOpenList = { navController.navigate("reminders/$it") },
+            composable("home") {
+                HomeScreen(
+                    onEdit = { reminderId ->
+                        if (reminderId == null) navController.navigate("new")
+                        else navController.navigate("edit?reminderId=$reminderId")
+                    },
                     onOpenSettings = { navController.navigate("settings") },
                     onOpenStats = { navController.navigate("stats") },
                 )
             }
-            composable(
-                "reminders/{listId}",
-                arguments = listOf(navArgument("listId") { type = NavType.StringType }),
-            ) { entry ->
-                val listId = entry.arguments?.getString("listId") ?: return@composable
-                RemindersScreen(
-                    listId = listId,
-                    onBack = { navController.popBackStack() },
-                    onEdit = { reminderId ->
-                        if (reminderId == null) navController.navigate("new/$listId")
-                        else navController.navigate("edit/$listId?reminderId=$reminderId")
-                    },
-                )
-            }
-            composable(
-                "new/{listId}",
-                arguments = listOf(navArgument("listId") { type = NavType.StringType }),
-            ) { entry ->
-                val listId = entry.arguments?.getString("listId") ?: return@composable
-                // One screen with every field, per Charlie: no step-by-step.
+            composable("new") {
                 EditReminderScreen(
-                    listId = listId,
                     reminderId = null,
                     onDone = { navController.popBackStack() },
                 )
             }
-            composable("setup") {
-                SetupScreen(onDone = {
-                    navController.navigate("lists") { popUpTo("setup") { inclusive = true } }
-                })
-            }
             composable(
-                "edit/{listId}?reminderId={reminderId}",
+                "edit?reminderId={reminderId}",
                 arguments = listOf(
-                    navArgument("listId") { type = NavType.StringType },
                     navArgument("reminderId") { type = NavType.StringType; defaultValue = "" },
                 ),
             ) { entry ->
-                val listId = entry.arguments?.getString("listId") ?: return@composable
                 val reminderId = entry.arguments?.getString("reminderId").orEmpty().ifBlank { null }
                 EditReminderScreen(
-                    listId = listId,
                     reminderId = reminderId,
                     onDone = { navController.popBackStack() },
                 )
             }
             composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }) }
             composable("stats") { StatsScreen(onBack = { navController.popBackStack() }) }
+            composable("setup") {
+                SetupScreen(onDone = {
+                    navController.navigate("home") { popUpTo("setup") { inclusive = true } }
+                })
+            }
         }
     }
 }

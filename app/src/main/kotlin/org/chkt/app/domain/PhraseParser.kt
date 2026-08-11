@@ -70,16 +70,20 @@ object PhraseParser {
             return Parsed(title, due.withSecond(0).withNano(0), repeat)
         }
 
-        // "at 2pm / at 14:30 / at 9", may appear after tomorrow/on-day too
-        Regex("^at (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?\\b").find(raw)?.let { m ->
+        // "at 2pm / at 14:30 / at 10 o'clock / at 9", may appear after tomorrow/on-day too
+        var ambiguousHour = false
+        Regex("^at (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|o'?clock)?\\b").find(raw)?.let { m ->
             var hour = m.groupValues[1].toInt()
             val minute = m.groupValues[2].ifBlank { "0" }.toInt()
             when (m.groupValues[3]) {
                 "pm" -> if (hour < 12) hour += 12
                 "am" -> if (hour == 12) hour = 0
+                // Bare "at 10" or "at 10 o'clock" means the NEXT ten,
+                // morning or evening, worked out below.
+                else -> ambiguousHour = hour in 1..12
             }
             if (hour !in 0..23 || minute !in 0..59) return null
-            time = LocalTime.of(hour, minute)
+            time = LocalTime.of(hour % 24, minute)
             raw = raw.removeRange(m.range).trim()
         }
 
@@ -96,6 +100,20 @@ object PhraseParser {
 
         val title = extractTitle(raw) ?: return null
         val t = time ?: return null
+
+        if (ambiguousHour && date == null) {
+            // "remind me at 10 to..." = the next ten o'clock. Said at 9am
+            // that's 10am today; said at 11pm it's 10am tomorrow.
+            val base = t.hour % 12
+            for (dayOffset in 0L..1L) {
+                for (hour in intArrayOf(base, base + 12)) {
+                    val candidate = now.toLocalDate().plusDays(dayOffset)
+                        .atTime(LocalTime.of(hour % 24, t.minute)).atZone(now.zone)
+                    if (candidate.isAfter(now)) return Parsed(title, candidate, repeat)
+                }
+            }
+            return null
+        }
 
         var due = (date ?: now.toLocalDate()).atTime(t).atZone(now.zone)
         if (!due.isAfter(now)) {

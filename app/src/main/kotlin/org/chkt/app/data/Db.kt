@@ -17,13 +17,12 @@ class Converters {
 }
 
 @Database(
-    entities = [ReminderList::class, Reminder::class, CompletionLog::class],
-    version = 2,
+    entities = [Reminder::class, CompletionLog::class],
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class ChktDatabase : RoomDatabase() {
-    abstract fun lists(): ListDao
     abstract fun reminders(): ReminderDao
     abstract fun logs(): LogDao
 

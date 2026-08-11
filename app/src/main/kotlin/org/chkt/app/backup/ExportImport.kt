@@ -5,39 +5,32 @@ import android.net.Uri
 import org.chkt.app.data.AlertMode
 import org.chkt.app.data.LocationTrigger
 import org.chkt.app.data.Reminder
-import org.chkt.app.data.ReminderList
 import org.chkt.app.data.Repository
+import org.chkt.app.ui.describeWhen
+import org.chkt.app.ui.tagList
 import org.json.JSONArray
 import org.json.JSONObject
-import org.chkt.app.ui.describeWhen
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
  * Plain-file portability: JSON is the round-trip format (export and import),
- * markdown is a human-readable one-way export. No sync system required.
+ * markdown is a human-readable one-way export. Format version 2 uses tags;
+ * version 1 files (which had lists) import cleanly, list names become tags.
  */
 object ExportImport {
-    const val FORMAT_VERSION = 1
+    const val FORMAT_VERSION = 2
 
-    fun exportJson(lists: List<ReminderList>, reminders: List<Reminder>): String {
+    fun exportJson(reminders: List<Reminder>): String {
         val root = JSONObject()
         root.put("app", "chkt")
         root.put("version", FORMAT_VERSION)
         root.put("exportedAt", Instant.now().toString())
-        root.put("lists", JSONArray().apply {
-            lists.forEach { l ->
-                put(JSONObject().apply {
-                    put("id", l.id); put("name", l.name); put("position", l.position)
-                    put("updatedAt", l.updatedAt)
-                })
-            }
-        })
         root.put("reminders", JSONArray().apply {
             reminders.forEach { r ->
                 put(JSONObject().apply {
-                    put("id", r.id); put("listId", r.listId)
+                    put("id", r.id); put("tags", r.tags)
                     put("title", r.title); put("notes", r.notes)
                     put("dueAt", r.dueAt ?: JSONObject.NULL)
                     put("repeatRule", r.repeatRule)
@@ -60,46 +53,47 @@ object ExportImport {
         return root.toString(2)
     }
 
-    fun exportMarkdown(lists: List<ReminderList>, reminders: List<Reminder>): String {
+    fun exportMarkdown(reminders: List<Reminder>): String {
         val sb = StringBuilder("# Chkt reminders\n\n")
         val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-        lists.forEach { list ->
-            sb.append("## ${list.name}\n\n")
-            reminders.filter { it.listId == list.id }.forEach { r ->
-                sb.append("- [ ] **${r.title}**")
-                val whenText = describeWhen(r)
-                if (whenText.isNotBlank()) sb.append(", $whenText")
-                if (r.notes.isNotBlank()) sb.append("\n  ${r.notes}")
-                sb.append("\n")
-            }
+        reminders.forEach { r ->
+            sb.append("- [ ] **${r.title}**")
+            val whenText = describeWhen(r)
+            if (whenText.isNotBlank()) sb.append(", $whenText")
+            val tags = r.tagList()
+            if (tags.isNotEmpty()) sb.append("  ").append(tags.joinToString(" ") { "#$it" })
+            if (r.notes.isNotBlank()) sb.append("\n  ${r.notes}")
             sb.append("\n")
         }
-        sb.append("_Exported ${fmt.format(Instant.now().atZone(ZoneId.systemDefault()))} by Chkt._\n")
+        sb.append("\n_Exported ${fmt.format(Instant.now().atZone(ZoneId.systemDefault()))} by Chkt._\n")
         return sb.toString()
     }
 
-    /** Returns the number of reminders imported, or -1 on failure. */
-    fun parseJson(raw: String): Pair<List<ReminderList>, List<Reminder>>? = try {
+    /** Parses a v1 or v2 export. Returns null when the file isn't Chkt's. */
+    fun parseJson(raw: String): List<Reminder>? = try {
         val root = JSONObject(raw)
         require(root.optString("app") == "chkt")
-        val lists = mutableListOf<ReminderList>()
-        val listsArr = root.getJSONArray("lists")
-        for (i in 0 until listsArr.length()) {
-            val o = listsArr.getJSONObject(i)
-            lists += ReminderList(
-                id = o.getString("id"),
-                name = o.getString("name"),
-                position = o.optInt("position", 0),
-                updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
-            )
+
+        // v1 had lists; carry their names over as tags.
+        val listNames = mutableMapOf<String, String>()
+        root.optJSONArray("lists")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                listNames[o.getString("id")] = o.optString("name", "")
+            }
         }
+
         val reminders = mutableListOf<Reminder>()
         val remArr = root.getJSONArray("reminders")
         for (i in 0 until remArr.length()) {
             val o = remArr.getJSONObject(i)
+            val tags = when {
+                o.has("tags") -> o.optString("tags", "")
+                else -> listNames[o.optString("listId")] ?: ""
+            }
             reminders += Reminder(
                 id = o.getString("id"),
-                listId = o.getString("listId"),
+                tags = tags,
                 title = o.getString("title"),
                 notes = o.optString("notes", ""),
                 dueAt = if (o.isNull("dueAt")) null else o.getLong("dueAt"),
@@ -122,30 +116,25 @@ object ExportImport {
                 updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
             )
         }
-        lists to reminders
+        reminders
     } catch (e: Exception) {
         null
     }
 
-    suspend fun snapshot(repo: Repository): Pair<List<ReminderList>, List<Reminder>> {
-        val lists = repo.db.lists().changedSince(0).filter { it.deletedAt == null }
-        val reminders = repo.db.reminders().changedSince(0).filter { it.deletedAt == null }
-        return lists to reminders
-    }
+    suspend fun snapshot(repo: Repository): List<Reminder> =
+        repo.db.reminders().changedSince(0).filter { it.deletedAt == null }
 
     suspend fun exportJsonToUri(context: Context, repo: Repository, uri: Uri): Boolean = try {
-        val (lists, reminders) = snapshot(repo)
         context.contentResolver.openOutputStream(uri, "wt")?.use {
-            it.write(exportJson(lists, reminders).toByteArray())
+            it.write(exportJson(snapshot(repo)).toByteArray())
         } != null
     } catch (e: Exception) {
         false
     }
 
     suspend fun exportMarkdownToUri(context: Context, repo: Repository, uri: Uri): Boolean = try {
-        val (lists, reminders) = snapshot(repo)
         context.contentResolver.openOutputStream(uri, "wt")?.use {
-            it.write(exportMarkdown(lists, reminders).toByteArray())
+            it.write(exportMarkdown(snapshot(repo)).toByteArray())
         } != null
     } catch (e: Exception) {
         false
@@ -153,11 +142,9 @@ object ExportImport {
 
     suspend fun importJsonFromUri(context: Context, repo: Repository, uri: Uri): Int = try {
         val raw = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
-        val parsed = raw?.let { parseJson(it) }
-        if (parsed == null) -1
+        val reminders = raw?.let { parseJson(it) }
+        if (reminders == null) -1
         else {
-            val (lists, reminders) = parsed
-            lists.forEach { repo.saveList(it) }
             reminders.forEach { repo.saveReminder(it) }
             reminders.size
         }
