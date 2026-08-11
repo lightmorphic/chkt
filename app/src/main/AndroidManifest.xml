@@ -2,6 +2,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Without these, Android's package-visibility filtering (API 30+)
+         hides every other app from us by default, so a text-to-speech
+         engine or speech-recognition app can be installed and working for
+         every other app on the phone while CHKT still reports "none
+         found". This declares what kinds of apps we need to be able to
+         see; it does not grant us any data from them. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <!-- Exact alarms are the whole point of the app. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
