@@ -1,6 +1,6 @@
-# Chkt
+# CHKT
 
-**Talking reminders for Android.** Chkt rings, then *says* your reminder out
+**Talking reminders for Android.** CHKT rings, then *says* your reminder out
 loud, so you know what needs doing without touching your phone.
 
 A free, GPL-licensed [Lightmorphic](https://lightmorphic.co.uk) side project.
@@ -21,18 +21,18 @@ No ads, no tracking, no Google services, no account. Donation-supported.
   your phone.
 - **Location reminders**, when you arrive at or leave a place, using
   Android's own location services (works on de-Googled phones).
-- **Quiet hours**, a do-not-disturb schedule for Chkt itself.
+- **Quiet hours**, a do-not-disturb schedule for CHKT itself.
 - **Backups and portability**, daily backup to a folder you choose, plus
   export/import as plain JSON or markdown. Your data is yours.
 - **Optional sync**, off by default. Pair it with a self-hosted
-  [Chkt Server](https://github.com/lightmorphic/chkt-server) and your phone
+  [CHKT Server](https://github.com/lightmorphic/chkt-server) and your phone
   and browser stay matched.
 - **Simple statistics**, how consistently you complete what you set.
 
 ## Voice
 
-Chkt speaks through whatever text-to-speech engine is installed. If your
-phone doesn't have one, Chkt suggests
+CHKT speaks through whatever text-to-speech engine is installed. If your
+phone doesn't have one, CHKT suggests
 [SherpaTTS](https://f-droid.org/packages/org.woheller69.ttsengine/), a
 free, offline voice engine on F-Droid. Any TTS engine works.
 

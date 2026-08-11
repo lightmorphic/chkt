@@ -37,7 +37,7 @@ import java.time.ZonedDateTime
  * The tap-to-record flow: tap the widget → this small overlay appears and
  * listens → tap Stop (or just finish speaking) → the phrase becomes a
  * reminder. Speech recognition runs through whatever recognition service the
- * phone has installed; audio never goes anywhere Chkt controls.
+ * phone has installed; audio never goes anywhere CHKT controls.
  */
 class RecordActivity : ComponentActivity() {
     private var recognizer: SpeechRecognizer? = null
@@ -56,7 +56,7 @@ class RecordActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) startListening()
-        else state.value = UiState.Problem("Chkt needs microphone access to hear the reminder.")
+        else state.value = UiState.Problem("CHKT needs microphone access to hear the reminder.")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

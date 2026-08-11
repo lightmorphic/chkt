@@ -57,7 +57,7 @@ class AppSettings(private val context: Context) {
         it[Keys.autoUpdateCheck] = enabled
     }
 
-    /** The notification sound Chkt alerts with, chosen per phone. Null = system default. */
+    /** The notification sound CHKT alerts with, chosen per phone. Null = system default. */
     val alertSoundUri: Flow<String?> = context.store.data.map { it[Keys.alertSound] }
 
     suspend fun setAlertSound(uri: String?) = context.store.edit {

@@ -4,10 +4,10 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Bold tick, slightly rounded, centred in the adaptive-icon safe zone. -->
+    <!-- Bold tick in brand navy, centred in the adaptive-icon safe zone. -->
     <path
         android:pathData="M32,55 L48,71 L78,39"
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#111827"
         android:strokeWidth="11"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />

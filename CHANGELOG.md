@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Chkt are recorded here.
+All notable changes to CHKT are recorded here.
 Format: [Keep a Changelog](https://keepachangelog.com/); versions follow
 [Semantic Versioning](https://semver.org/).
 
@@ -25,7 +25,7 @@ First release.
 - Tap-to-record home-screen widget with on-device structured phrase parsing.
 - Location reminders (arrive/leave) via platform proximity alerts.
 - Daily backups to a user-chosen folder; JSON and markdown export; JSON import.
-- Optional sync with a self-hosted Chkt Server (off by default).
+- Optional sync with a self-hosted CHKT Server (off by default).
 - Completion statistics for the last 30 days.
 - Guided one-question-at-a-time flow for creating reminders, ending in a
   plain-words summary.

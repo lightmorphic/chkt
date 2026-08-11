@@ -95,7 +95,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     ) { uri ->
         if (uri != null) scope.launch {
             val count = ExportImport.importJsonFromUri(context, repo, uri)
-            statusMessage = if (count >= 0) "Imported $count reminders." else "Import failed, is it a Chkt JSON export?"
+            statusMessage = if (count >= 0) "Imported $count reminders." else "Import failed, is it a CHKT JSON export?"
         }
     }
 
@@ -158,7 +158,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SettingsCard("Alert sound") {
                 Text(
-                    "The notification sound Chkt alerts with on this phone. Reminders set to ring use this before any speech.",
+                    "The notification sound CHKT alerts with on this phone. Reminders set to ring use this before any speech.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 val alertSound by repo.settings.alertSoundUri.collectAsState(initial = null)
@@ -181,7 +181,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
                             android.media.RingtoneManager.TYPE_NOTIFICATION)
                         .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "Chkt alert sound")
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "CHKT alert sound")
                     alertSound?.let {
                         intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(it))
                     }
@@ -227,7 +227,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SettingsCard("Sync (optional)") {
                 Text(
-                    "Off by default. Point Chkt at your own Chkt Server to keep this phone and the web version matched.",
+                    "Off by default. Point CHKT at your own CHKT Server to keep this phone and the web version matched.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 var server by remember(sync.serverUrl) { mutableStateOf(sync.serverUrl) }
@@ -263,7 +263,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SettingsCard("App updates") {
                 Text(
-                    "You're on version " + org.chkt.app.BuildConfig.VERSION_NAME + ". Updates come from the Chkt project page; checking only happens when you ask (or daily, if you switch that on).",
+                    "You're on version " + org.chkt.app.BuildConfig.VERSION_NAME + ". Updates come from the CHKT project page; checking only happens when you ask (or daily, if you switch that on).",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 var checking by remember { mutableStateOf(false) }

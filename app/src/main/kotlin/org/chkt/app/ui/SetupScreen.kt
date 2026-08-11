@@ -129,7 +129,7 @@ fun SetupScreen(onDone: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Spacer(Modifier.height(12.dp))
-        Text("Let Chkt wake you up properly", fontSize = 26.sp, lineHeight = 34.sp)
+        Text("Let CHKT wake you up properly", fontSize = 26.sp, lineHeight = 34.sp)
         Text(
             "Reminders that ring and speak need a few permissions. Without them, alerts arrive late, quietly, or not at all.",
             style = MaterialTheme.typography.bodyMedium,
@@ -202,7 +202,7 @@ fun SetupScreen(onDone: () -> Unit) {
                             .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
                                 android.media.RingtoneManager.TYPE_NOTIFICATION)
                             .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "Chkt alert sound")
+                            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "CHKT alert sound")
                     )
                 }) { Text("Choose") }
             }

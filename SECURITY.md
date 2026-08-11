@@ -15,8 +15,8 @@ receive backported fixes.
 
 ## Scope notes
 
-- Chkt stores everything on-device in the app's private storage.
+- CHKT stores everything on-device in the app's private storage.
 - Sync is off by default. When enabled, it talks only to the server address
   the user enters, over HTTPS, authenticated with a per-device access key.
 - The record widget's audio is processed by the device's own speech
-  recognition service and never transmitted by Chkt.
+  recognition service and never transmitted by CHKT.

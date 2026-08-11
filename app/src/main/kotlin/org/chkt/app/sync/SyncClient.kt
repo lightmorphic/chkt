@@ -17,7 +17,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Talks to a Chkt Server. One endpoint does the whole job:
+ * Talks to a CHKT Server. One endpoint does the whole job:
  *
  *   POST /api/sync  { since, reminders, logs }  → server changes since `since`
  *

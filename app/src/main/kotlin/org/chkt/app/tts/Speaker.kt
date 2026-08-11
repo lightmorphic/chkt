@@ -6,7 +6,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 
 /**
- * Thin wrapper over Android's system TTS. Chkt never bundles a voice engine,
+ * Thin wrapper over Android's system TTS. CHKT never bundles a voice engine,
  * it uses whatever engine the user has installed (Sherpa TTS recommended).
  */
 class Speaker(

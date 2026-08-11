@@ -93,6 +93,9 @@ class AlertActivity : ComponentActivity() {
     }
 }
 
+private val AlertYellow = Color(0xFFFBC711)
+private val AlertNavy = Color(0xFF111827)
+
 @Composable
 private fun AlertScreen(
     title: String,
@@ -100,27 +103,29 @@ private fun AlertScreen(
     onDone: () -> Unit,
     onSnooze: (Int) -> Unit,
 ) {
+    // The alert is deliberately unmissable: bright brand yellow with navy
+    // controls, nothing like an ordinary app screen.
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(AlertYellow)
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(title, fontSize = 32.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground)
+        Text(title, fontSize = 34.sp, textAlign = TextAlign.Center, color = AlertNavy)
         if (notes.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
-            Text(notes, fontSize = 18.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+            Text(notes, fontSize = 18.sp, textAlign = TextAlign.Center, color = AlertNavy.copy(alpha = 0.75f))
         }
         Spacer(Modifier.height(48.dp))
         Button(
             onClick = onDone,
             modifier = Modifier.fillMaxWidth().height(64.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B5E4A)),
+            colors = ButtonDefaults.buttonColors(containerColor = AlertNavy, contentColor = AlertYellow),
         ) { Text("Done", fontSize = 22.sp) }
         Spacer(Modifier.height(24.dp))
-        Text("Snooze", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+        Text("Snooze", color = AlertNavy.copy(alpha = 0.7f))
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SnoozeButton("10 min", 10, onSnooze)
@@ -138,5 +143,9 @@ private fun AlertScreen(
 
 @Composable
 private fun SnoozeButton(label: String, minutes: Int, onSnooze: (Int) -> Unit) {
-    OutlinedButton(onClick = { onSnooze(minutes) }) { Text(label) }
+    OutlinedButton(
+        onClick = { onSnooze(minutes) },
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = AlertNavy),
+        border = androidx.compose.foundation.BorderStroke(2.dp, AlertNavy),
+    ) { Text(label) }
 }

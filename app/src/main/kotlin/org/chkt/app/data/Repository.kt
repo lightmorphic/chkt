@@ -45,7 +45,14 @@ class Repository(
         db.logs().insert(
             CompletionLog(reminderId = id, dueAt = reminder.dueAt ?: 0, action = LogAction.SNOOZED)
         )
-        val snoozed = reminder.copy(snoozedUntil = untilMillis, nagStartedAt = null, updatedAt = System.currentTimeMillis())
+        // Snoozing means "still live": a one-off that already fired was
+        // disabled at fire time, so switch it back on or the snooze is lost.
+        val snoozed = reminder.copy(
+            enabled = true,
+            snoozedUntil = untilMillis,
+            nagStartedAt = null,
+            updatedAt = System.currentTimeMillis(),
+        )
         db.reminders().upsert(snoozed)
         scheduler.schedule(snoozed)
     }

@@ -54,7 +54,7 @@ object ExportImport {
     }
 
     fun exportMarkdown(reminders: List<Reminder>): String {
-        val sb = StringBuilder("# Chkt reminders\n\n")
+        val sb = StringBuilder("# CHKT reminders\n\n")
         val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         reminders.forEach { r ->
             sb.append("- [ ] **${r.title}**")
@@ -65,11 +65,11 @@ object ExportImport {
             if (r.notes.isNotBlank()) sb.append("\n  ${r.notes}")
             sb.append("\n")
         }
-        sb.append("\n_Exported ${fmt.format(Instant.now().atZone(ZoneId.systemDefault()))} by Chkt._\n")
+        sb.append("\n_Exported ${fmt.format(Instant.now().atZone(ZoneId.systemDefault()))} by CHKT._\n")
         return sb.toString()
     }
 
-    /** Parses a v1 or v2 export. Returns null when the file isn't Chkt's. */
+    /** Parses a v1 or v2 export. Returns null when the file isn't CHKT's. */
     fun parseJson(raw: String): List<Reminder>? = try {
         val root = JSONObject(raw)
         require(root.optString("app") == "chkt")

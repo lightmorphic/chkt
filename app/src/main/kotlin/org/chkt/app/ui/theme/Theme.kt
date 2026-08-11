@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 // Lightmorphic brand colours: yellow is the accent, navy grounds it, and the
-// Chkt green stays for the identity marks (icon, tick).
+// CHKT green stays for the identity marks (icon, tick).
 private val BrandYellow = Color(0xFFFBC711)
 private val OnYellow = Color(0xFF645007)
 private val YellowContainerLight = Color(0xFFFFF8E2)

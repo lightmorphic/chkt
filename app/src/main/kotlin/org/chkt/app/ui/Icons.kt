@@ -15,6 +15,23 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
+/** The CHKT mark: brand-yellow rounded square with a navy tick. */
+@Composable
+fun ChktLogo(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.size(28.dp)) {
+        val s = size.minDimension / 24f
+        drawRoundRect(
+            color = Color(0xFFFBC711),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f * s, 5f * s),
+        )
+        val tick = Path().apply {
+            moveTo(6.5f * s, 12.5f * s); lineTo(10.5f * s, 16.5f * s); lineTo(17.5f * s, 7.5f * s)
+        }
+        drawPath(tick, Color(0xFF111827),
+            style = Stroke(width = 2.8f * s, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
 /**
  * Purpose-drawn stroke icons (no emoji, no icon-font glyphs). Each is drawn
  * on a 24×24 grid and scales with the size modifier.

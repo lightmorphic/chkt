@@ -1,7 +1,12 @@
 package org.chkt.app.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,7 +62,12 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chkt") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ChktLogo()
+                        Text("  CHKT")
+                    }
+                },
                 actions = {
                     val tint = MaterialTheme.colorScheme.onSurface
                     IconButton24(ChktIcon.Stats, "Statistics", tint, onClick = onOpenStats)
@@ -116,6 +126,28 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** Active state as a plain circle: filled grey when active, outline when off. */
+@Composable
+private fun ActiveCircle(active: Boolean, onToggle: () -> Unit) {
+    val grey = MaterialTheme.colorScheme.onSurfaceVariant
+    Canvas(
+        modifier = Modifier
+            .size(40.dp)
+            .clickable(onClick = onToggle)
+            .padding(10.dp)
+            .semantics {
+                contentDescription =
+                    if (active) "Active, tap to switch off" else "Off, tap to switch on"
+            },
+    ) {
+        if (active) {
+            drawCircle(color = grey)
+        } else {
+            drawCircle(color = grey, style = Stroke(width = 2.dp.toPx()))
         }
     }
 }
@@ -183,7 +215,7 @@ private fun ReminderRow(
                     )
                 }
             }
-            Switch(checked = reminder.enabled, onCheckedChange = onToggle)
+            ActiveCircle(active = reminder.enabled, onToggle = { onToggle(!reminder.enabled) })
             if (confirmingDelete) {
                 IconButton24(ChktIcon.Tick, "Confirm delete", MaterialTheme.colorScheme.error, onClick = onDelete)
             } else {

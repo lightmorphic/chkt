@@ -100,7 +100,7 @@ class AlertService : Service() {
     }
 
     private fun playRingtone(reminder: Reminder, onDone: () -> Unit) {
-        // The alert sound is the notification sound chosen in Chkt's settings
+        // The alert sound is the notification sound chosen in CHKT's settings
         // on this phone; system default notification sound until one is picked.
         val uri = alertSoundUri?.let { android.net.Uri.parse(it) }
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)

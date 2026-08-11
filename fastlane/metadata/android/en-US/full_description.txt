@@ -1,4 +1,4 @@
-Chkt rings, then speaks your reminder out loud, so you know what needs
+CHKT rings, then speaks your reminder out loud, so you know what needs
 doing without touching your phone.
 
 Features:
@@ -16,9 +16,9 @@ Features:
   Parsed on your device, audio never leaves your phone.
 * Location reminders when you arrive at or leave a place, using Android's
   own location services.
-* Quiet hours, a do-not-disturb schedule for Chkt itself.
+* Quiet hours, a do-not-disturb schedule for CHKT itself.
 * Daily backups, plus export/import as plain JSON or markdown.
-* Optional sync with a self-hosted Chkt Server (off by default, the app
+* Optional sync with a self-hosted CHKT Server (off by default, the app
   is fully usable offline, forever).
 * Lightweight completion statistics.
 
