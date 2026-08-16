@@ -45,13 +45,20 @@
          still asks the user to confirm every install. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Sync talks only to the one server address the user types in
+         themselves; self-hosted CHKT Server explicitly supports plain HTTP
+         on a private network (Tailscale, home LAN), which is the normal
+         case, not an edge case. Without usesCleartextTraffic, Android
+         silently blocks every such connection and "Test connection" fails
+         with no obvious reason. HTTPS still works exactly the same either way. -->
     <application
         android:name=".ChktApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Chkt">
+        android:theme="@style/Theme.Chkt"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"

@@ -27,20 +27,22 @@ import java.net.URL
  */
 class SyncClient(private val context: Context) {
 
-    suspend fun testConnection(serverUrl: String, accessKey: String): String =
+    data class ConnectionTest(val ok: Boolean, val message: String)
+
+    suspend fun testConnection(serverUrl: String, accessKey: String): ConnectionTest =
         withContext(Dispatchers.IO) {
-            if (serverUrl.isBlank()) return@withContext "Enter the server address first."
-            if (accessKey.isBlank()) return@withContext "Enter the access key first."
+            if (serverUrl.isBlank()) return@withContext ConnectionTest(false, "Enter the server address first.")
+            if (accessKey.isBlank()) return@withContext ConnectionTest(false, "Enter the access key first.")
             try {
                 val conn = open(serverUrl.trimEnd('/') + "/api/ping", accessKey, "GET")
                 val code = conn.responseCode
                 when (code) {
-                    200 -> "Connected. The server answered."
-                    401, 403 -> "The server refused the access key."
-                    else -> "The server answered with an error (HTTP $code)."
+                    200 -> ConnectionTest(true, "Connected, the server answered.")
+                    401, 403 -> ConnectionTest(false, "The server refused the access key.")
+                    else -> ConnectionTest(false, "The server answered with an error (HTTP $code).")
                 }
             } catch (e: Exception) {
-                "Couldn't reach the server: ${e.message ?: "unknown error"}"
+                ConnectionTest(false, "Couldn't reach the server: ${e.message ?: "unknown error"}")
             }
         }
 

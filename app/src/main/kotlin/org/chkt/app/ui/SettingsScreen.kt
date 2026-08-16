@@ -11,12 +11,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -25,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -252,13 +257,40 @@ fun SettingsScreen(onBack: () -> Unit) {
                     label = { Text(if (sync.accessKey.isBlank()) "Access key" else "Access key (saved, leave blank to keep)") },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedButton(onClick = {
-                    scope.launch {
-                        val effectiveKey = if (key.isNotBlank()) key else sync.accessKey
-                        repo.settings.setSync(sync.copy(serverUrl = server, accessKey = effectiveKey))
-                        statusMessage = SyncClient(context).testConnection(server, effectiveKey)
+                var testing by remember { mutableStateOf(false) }
+                var testResult by remember { mutableStateOf<org.chkt.app.sync.SyncClient.ConnectionTest?>(null) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(enabled = !testing, onClick = {
+                        testing = true
+                        testResult = null
+                        scope.launch {
+                            val effectiveKey = if (key.isNotBlank()) key else sync.accessKey
+                            repo.settings.setSync(sync.copy(serverUrl = server, accessKey = effectiveKey))
+                            testResult = SyncClient(context).testConnection(server, effectiveKey)
+                            testing = false
+                        }
+                    }) { Text(if (testing) "Testing…" else "Test connection") }
+                    if (testing) {
+                        Spacer(Modifier.width(12.dp))
+                        androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     }
-                }) { Text("Test connection") }
+                }
+                // Right under the button, not buried at the bottom of the
+                // whole Settings screen, so it can't be mistaken for nothing
+                // having happened.
+                testResult?.let { result ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                        if (result.ok) {
+                            IconButton24(ChktIcon.Tick, "Connected", Color(0xFF2E8B6F)) {}
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(
+                            result.message,
+                            color = if (result.ok) Color(0xFF2E8B6F) else MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
             }
 
             SettingsCard("App updates") {
