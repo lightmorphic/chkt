@@ -167,7 +167,7 @@ fun EditReminderScreen(
             )
             OutlinedTextField(
                 value = notes, onValueChange = { notes = it },
-                label = { Text("Notes (also spoken)") },
+                label = { Text("Notes (shown, not spoken)") },
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -222,13 +222,17 @@ fun EditReminderScreen(
                 FilterChip(selected = nagInterval == 5, onClick = { nagInterval = 5 }, label = { Text("5 min") })
             }
             if (nagInterval > 0) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(15, 30, 60, 120).forEach { minutes ->
-                        FilterChip(
-                            selected = nagStopAfter == minutes,
-                            onClick = { nagStopAfter = minutes },
-                            label = { Text(if (minutes < 60) "stop after $minutes min" else "stop after ${minutes / 60} hr") },
-                        )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(15 to 30, 60 to 120).forEach { (a, b) ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(a, b).forEach { minutes ->
+                                FilterChip(
+                                    selected = nagStopAfter == minutes,
+                                    onClick = { nagStopAfter = minutes },
+                                    label = { Text(if (minutes < 60) "stop after $minutes min" else "stop after ${minutes / 60} hr") },
+                                )
+                            }
+                        }
                     }
                 }
             }

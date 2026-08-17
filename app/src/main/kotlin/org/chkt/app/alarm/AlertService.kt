@@ -95,8 +95,10 @@ class AlertService : Service() {
     private fun speakText(reminder: Reminder) {
         speaker = Speaker(this, respectDnd = reminder.respectDnd) { ready ->
             if (!ready) { finishAfterDelay(); return@Speaker }
-            val text = reminder.title + if (reminder.notes.isNotBlank()) ". ${reminder.notes}" else ""
-            speaker?.speak(text, reminder.id) { finishAfterDelay() }
+            // Notes show on the alert screen and in the notification, but
+            // aren't spoken — they're often longer free text, not meant to
+            // be read aloud the way the title is.
+            speaker?.speak(reminder.title, reminder.id) { finishAfterDelay() }
         }
     }
 
