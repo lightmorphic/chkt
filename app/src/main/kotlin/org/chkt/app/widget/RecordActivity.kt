@@ -93,10 +93,12 @@ class RecordActivity : ComponentActivity() {
 
     private fun startListening() {
         state.value = UiState.Listening
+        RecordWidgetReceiver.setActive(this, active = true)
         recognizer?.destroy()
         recognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onResults(results: Bundle?) {
+                    RecordWidgetReceiver.setActive(this@RecordActivity, active = false)
                     val text = results
                         ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         ?.firstOrNull()
@@ -109,6 +111,7 @@ class RecordActivity : ComponentActivity() {
                 }
 
                 override fun onError(error: Int) {
+                    RecordWidgetReceiver.setActive(this@RecordActivity, active = false)
                     state.value = UiState.Problem(
                         when (error) {
                             SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
@@ -161,6 +164,9 @@ class RecordActivity : ComponentActivity() {
 
     override fun onDestroy() {
         recognizer?.destroy()
+        // Safety net: covers Stop being tapped mid-listen, or the activity
+        // being torn down before a result/error callback ever arrives.
+        RecordWidgetReceiver.setActive(this, active = false)
         super.onDestroy()
     }
 }

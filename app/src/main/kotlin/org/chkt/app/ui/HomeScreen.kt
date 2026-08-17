@@ -189,6 +189,7 @@ fun describeWhen(reminder: Reminder): String {
                 else -> "$m min"
             }
         }
+        is org.chkt.app.domain.RepeatRule.EveryYears -> parts += "every ${rule.years} yr"
     }
     if (reminder.locationTrigger != org.chkt.app.data.LocationTrigger.NONE) {
         parts += if (reminder.locationTrigger == org.chkt.app.data.LocationTrigger.ARRIVE) "on arrival" else "on leaving"

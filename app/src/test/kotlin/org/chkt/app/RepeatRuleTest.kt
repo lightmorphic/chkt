@@ -28,6 +28,7 @@ class RepeatRuleTest {
             RepeatRule.Every(Duration.ofMinutes(90)),
             RepeatRule.Every(Duration.ofDays(3)),
             RepeatRule.Every(Duration.ofDays(14)),
+            RepeatRule.EveryYears(3),
         )
         rules.forEach { rule ->
             assertEquals(rule, RepeatRule.decode(rule.encode()))
@@ -95,8 +96,26 @@ class RepeatRuleTest {
     }
 
     @Test
+    fun `every N years steps by calendar years, no drift`() {
+        val rule = RepeatRule.EveryYears(3)
+        val prev = zdt(2020, 8, 10, 9, 0)
+        val next = rule.nextAfter(prev, zdt(2026, 8, 10, 9, 0))
+        // Two 3-year steps from 2020 land on 2026, which isn't after itself,
+        // so the third step (2029) is the first strictly-after occurrence.
+        assertEquals(zdt(2029, 8, 10, 9, 0), next)
+    }
+
+    @Test
+    fun `every N years handles 29 february gracefully`() {
+        val rule = RepeatRule.EveryYears(3)
+        val next = rule.nextAfter(zdt(2024, 2, 29, 10, 0), zdt(2024, 3, 1, 0, 0))
+        // 2027 is not a leap year: plusYears clamps to 28 Feb.
+        assertEquals(zdt(2027, 2, 28, 10, 0), next)
+    }
+
+    @Test
     fun `garbage decodes to none`() {
-        listOf("WEEKLY:", "MONTHLY:99", "YEARLY:13-40", "EVERY:0d", "EVERY:xyz", "BANANA")
+        listOf("WEEKLY:", "MONTHLY:99", "YEARLY:13-40", "EVERY:0d", "EVERY:0y", "EVERY:xyz", "BANANA")
             .forEach { assertEquals(RepeatRule.None, RepeatRule.decode(it)) }
     }
 

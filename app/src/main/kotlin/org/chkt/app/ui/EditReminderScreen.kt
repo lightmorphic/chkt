@@ -201,7 +201,7 @@ fun EditReminderScreen(
             )
 
             SectionLabel("Repeat")
-            RepeatPicker(rule = rule, time = time, onChange = { rule = it })
+            RepeatPicker(rule = rule, date = date, time = time, onChange = { rule = it })
 
             SectionLabel("Alert")
             AlertModePicker(alertMode) { alertMode = it }
@@ -336,30 +336,33 @@ private fun DateTimeRow(
 }
 
 @Composable
-private fun RepeatPicker(rule: RepeatRule, time: LocalTime, onChange: (RepeatRule) -> Unit) {
+private fun RepeatPicker(rule: RepeatRule, date: LocalDate?, time: LocalTime, onChange: (RepeatRule) -> Unit) {
+    // Default every repeat kind onto the date the user actually picked in
+    // "When", not today — today is only a fallback for a not-yet-set date.
+    val anchor = date ?: LocalDate.now()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = rule is RepeatRule.None, onClick = { onChange(RepeatRule.None) }, label = { Text("Once") })
             FilterChip(selected = rule is RepeatRule.Daily, onClick = { onChange(RepeatRule.Daily) }, label = { Text("Daily") })
             FilterChip(
                 selected = rule is RepeatRule.Weekly,
-                onClick = { onChange(RepeatRule.Weekly(setOf(LocalDate.now().dayOfWeek))) },
+                onClick = { onChange(RepeatRule.Weekly(setOf(anchor.dayOfWeek))) },
                 label = { Text("Weekly") },
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = rule is RepeatRule.Monthly,
-                onClick = { onChange(RepeatRule.Monthly(LocalDate.now().dayOfMonth)) },
+                onClick = { onChange(RepeatRule.Monthly(anchor.dayOfMonth)) },
                 label = { Text("Monthly") },
             )
             FilterChip(
                 selected = rule is RepeatRule.Yearly,
-                onClick = { onChange(RepeatRule.Yearly(MonthDay.from(LocalDate.now()))) },
+                onClick = { onChange(RepeatRule.Yearly(MonthDay.from(anchor))) },
                 label = { Text("Yearly") },
             )
             FilterChip(
-                selected = rule is RepeatRule.Every,
+                selected = rule is RepeatRule.Every || rule is RepeatRule.EveryYears,
                 onClick = { onChange(RepeatRule.Every(java.time.Duration.ofDays(2))) },
                 label = { Text("Custom") },
             )
@@ -398,33 +401,54 @@ private fun RepeatPicker(rule: RepeatRule, time: LocalTime, onChange: (RepeatRul
                     )
                 }
             }
-            is RepeatRule.Every -> {
-                var amount by remember { mutableStateOf("2") }
-                var unit by remember { mutableStateOf("d") }
-                fun push() {
-                    val n = amount.toLongOrNull() ?: return
-                    if (n <= 0) return
-                    val d = when (unit) {
-                        "m" -> java.time.Duration.ofMinutes(n)
-                        "h" -> java.time.Duration.ofHours(n)
-                        "d" -> java.time.Duration.ofDays(n)
-                        else -> java.time.Duration.ofDays(7 * n)
-                    }
-                    onChange(RepeatRule.Every(d))
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = amount,
-                        onValueChange = { amount = it; push() },
-                        label = { Text("Every") },
-                        modifier = Modifier.fillMaxWidth(0.3f),
-                    )
-                    listOf("m" to "min", "h" to "hrs", "d" to "days", "w" to "wks").forEach { (code, label) ->
-                        FilterChip(selected = unit == code, onClick = { unit = code; push() }, label = { Text(label) })
-                    }
-                }
-            }
+            is RepeatRule.Every -> EveryPicker(rule, onChange)
+            is RepeatRule.EveryYears -> EveryPicker(rule, onChange)
             else -> {}
+        }
+    }
+}
+
+@Composable
+private fun EveryPicker(rule: RepeatRule, onChange: (RepeatRule) -> Unit) {
+    // Seeded once, from the rule actually in effect (via its own encode()),
+    // not a hardcoded "2 days" — otherwise reopening an existing "every 10
+    // weeks" reminder showed the picker's stale default instead of what's
+    // stored. Deliberately NOT keyed on `rule`: every keystroke here pushes
+    // a new rule back up, and re-deriving from that on each recomposition
+    // would reformat the field out from under whatever the user is typing.
+    val parsed = remember { Regex("^(\\d+)([mhdwy])$").find(rule.encode().removePrefix("EVERY:")) }
+    var amount by remember { mutableStateOf(parsed?.groupValues?.get(1) ?: "2") }
+    var unit by remember { mutableStateOf(parsed?.groupValues?.get(2) ?: "d") }
+
+    fun push() {
+        val n = amount.toLongOrNull() ?: return
+        if (n <= 0) return
+        if (unit == "y") {
+            onChange(RepeatRule.EveryYears(n.toInt()))
+            return
+        }
+        val d = when (unit) {
+            "m" -> java.time.Duration.ofMinutes(n)
+            "h" -> java.time.Duration.ofHours(n)
+            "d" -> java.time.Duration.ofDays(n)
+            else -> java.time.Duration.ofDays(7 * n)
+        }
+        onChange(RepeatRule.Every(d))
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it; push() },
+                label = { Text("Every") },
+                modifier = Modifier.fillMaxWidth(0.3f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("m" to "min", "h" to "hrs", "d" to "days", "w" to "wks", "y" to "yrs").forEach { (code, label) ->
+                FilterChip(selected = unit == code, onClick = { unit = code; push() }, label = { Text(label) })
+            }
         }
     }
 }

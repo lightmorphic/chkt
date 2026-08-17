@@ -1,23 +1,27 @@
 package org.chkt.app.ui
 
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -27,126 +31,132 @@ import org.chkt.app.update.Updater
 import java.io.File
 
 /**
- * Lightmorphic's standard update-status dot: green when current, amber with
- * a download glyph when an update is out, a filling ring while it downloads,
- * green with an install glyph once ready, red if GitHub can't be reached.
- * One check on open; no separate "check for updates" control.
+ * Update-status dot for the home screen top bar. Green is the resting state
+ * and doubles as a manual "check now" button: tapping it pulses while it
+ * checks, then either turns yellow (update found) or pulses back down to
+ * green (already current). Tapping yellow downloads; once the download
+ * lands the dot turns blue and a dialog offers to install. Red means the
+ * last check couldn't reach GitHub at all.
  */
-private sealed class DotState {
-    data object Checking : DotState()
-    data object UpToDate : DotState()
-    data class Available(val info: Updater.UpdateInfo) : DotState()
-    data object Downloading : DotState()
-    data class Ready(val apk: File) : DotState()
-    data object Unreachable : DotState()
-}
+private enum class DotColor { GREEN, YELLOW, BLUE, RED }
 
 private val GREEN = Color(0xFF4BAE4F)
-private val AMBER = Color(0xFFFFC006)
+private val YELLOW = Color(0xFFFFC006)
+private val BLUE = Color(0xFF2E6FE8)
 private val RED = Color(0xFFF34236)
 
 @Composable
 fun UpdateStatusDot() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var state by remember { mutableStateOf<DotState>(DotState.Checking) }
-    var progress by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(Unit) {
-        state = when (val result = Updater.check(context)) {
-            is Updater.CheckResult.UpToDate -> DotState.UpToDate
-            is Updater.CheckResult.UpdateAvailable -> DotState.Available(result.info)
-            is Updater.CheckResult.Failed -> DotState.Unreachable
+    var color by remember { mutableStateOf(DotColor.GREEN) }
+    var pulsing by remember { mutableStateOf(false) }
+    var pendingInfo by remember { mutableStateOf<Updater.UpdateInfo?>(null) }
+    var downloadedApk by remember { mutableStateOf<File?>(null) }
+    var showInstallDialog by remember { mutableStateOf(false) }
+
+    suspend fun check() {
+        when (val result = Updater.check(context)) {
+            is Updater.CheckResult.UpToDate -> color = DotColor.GREEN
+            is Updater.CheckResult.UpdateAvailable -> {
+                pendingInfo = result.info
+                color = DotColor.YELLOW
+            }
+            is Updater.CheckResult.Failed -> color = DotColor.RED
         }
     }
 
-    val current = state
+    // Silent check on open: no pulse, so the dot doesn't animate on every
+    // launch — pulsing is reserved for a check the user actually asked for.
+    LaunchedEffect(Unit) { check() }
+
     val description: String
     val onClick: (() -> Unit)?
-    when (current) {
-        is DotState.Checking -> { description = "Checking for updates"; onClick = null }
-        is DotState.UpToDate -> { description = "Up to date"; onClick = null }
-        is DotState.Available -> {
+    when (color) {
+        DotColor.GREEN -> {
+            description = "Up to date, tap to check for updates"
+            onClick = {
+                pulsing = true
+                scope.launch {
+                    check()
+                    pulsing = false
+                }
+            }
+        }
+        DotColor.YELLOW -> {
             description = "Update available, tap to download"
             onClick = {
-                val info = current.info
-                scope.launch {
-                    state = DotState.Downloading
-                    progress = 0f
-                    when (val result = Updater.downloadUpdate(context, info) { p -> progress = p }) {
-                        is Updater.DownloadResult.Ok -> state = DotState.Ready(result.apk)
-                        is Updater.DownloadResult.Failed -> state = DotState.Unreachable
+                val info = pendingInfo
+                if (info != null) {
+                    pulsing = true
+                    scope.launch {
+                        when (val result = Updater.downloadUpdate(context, info)) {
+                            is Updater.DownloadResult.Ok -> {
+                                downloadedApk = result.apk
+                                color = DotColor.BLUE
+                                showInstallDialog = true
+                            }
+                            is Updater.DownloadResult.Failed -> { /* stays yellow, retry available */ }
+                        }
+                        pulsing = false
                     }
                 }
             }
         }
-        is DotState.Downloading -> { description = "Downloading update"; onClick = null }
-        is DotState.Ready -> {
+        DotColor.BLUE -> {
             description = "Downloaded, tap to install"
-            onClick = { Updater.install(context, current.apk) }
+            onClick = { showInstallDialog = true }
         }
-        is DotState.Unreachable -> { description = "Can't reach GitHub"; onClick = null }
+        DotColor.RED -> {
+            description = "Can't reach GitHub"
+            onClick = null
+        }
     }
+
+    val transition = rememberInfiniteTransition(label = "update-dot-pulse")
+    val pulseScale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (pulsing) 1.35f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "update-dot-pulse-scale",
+    )
 
     Canvas(
         modifier = Modifier
             .size(20.dp)
+            .scale(if (pulsing) pulseScale else 1f)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .semantics { contentDescription = description },
     ) {
         val radius = size.minDimension / 2f * 0.6f
-        when (current) {
-            is DotState.Checking ->
-                drawCircle(color = Color.Gray, radius = radius, style = Stroke(width = 1.5.dp.toPx()))
-            is DotState.UpToDate ->
-                drawCircle(color = GREEN, radius = radius)
-            is DotState.Available -> {
-                drawCircle(color = AMBER, radius = radius)
-                drawDownloadGlyph(radius)
-            }
-            is DotState.Downloading -> {
-                drawCircle(color = Color.Gray, radius = radius, style = Stroke(width = 1.5.dp.toPx()))
-                drawArc(
-                    color = AMBER,
-                    startAngle = -90f,
-                    sweepAngle = 360f * progress,
-                    useCenter = false,
-                    style = Stroke(width = 2.dp.toPx()),
-                    topLeft = Offset(center.x - radius, center.y - radius),
-                    size = Size(radius * 2, radius * 2),
-                )
-            }
-            is DotState.Ready -> {
-                drawCircle(color = GREEN, radius = radius)
-                drawInstallGlyph(radius)
-            }
-            is DotState.Unreachable ->
-                drawCircle(color = RED, radius = radius)
+        val dotColor = when (color) {
+            DotColor.GREEN -> GREEN
+            DotColor.YELLOW -> YELLOW
+            DotColor.BLUE -> BLUE
+            DotColor.RED -> RED
         }
+        drawCircle(color = dotColor, radius = radius)
     }
-}
 
-/** A small downward arrow: stem plus a chevron head. */
-private fun DrawScope.drawDownloadGlyph(radius: Float) {
-    val c = center
-    val half = radius * 0.45f
-    drawLine(Color.White, Offset(c.x, c.y - half), Offset(c.x, c.y + half * 0.3f), strokeWidth = 1.5.dp.toPx())
-    val path = Path().apply {
-        moveTo(c.x - half * 0.6f, c.y - half * 0.15f)
-        lineTo(c.x, c.y + half * 0.55f)
-        lineTo(c.x + half * 0.6f, c.y - half * 0.15f)
+    if (showInstallDialog) {
+        val apk = downloadedApk
+        AlertDialog(
+            onDismissRequest = { showInstallDialog = false },
+            title = { Text("Update downloaded") },
+            text = { Text("The new version is ready. Install it now?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showInstallDialog = false
+                    apk?.let { Updater.install(context, it) }
+                }) { Text("Install") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showInstallDialog = false }) { Text("Later") }
+            },
+        )
     }
-    drawPath(path, color = Color.White, style = Stroke(width = 1.5.dp.toPx()))
-}
-
-/** A small checkmark, reused from ChktIcon.Tick's proportions. */
-private fun DrawScope.drawInstallGlyph(radius: Float) {
-    val c = center
-    val half = radius * 0.5f
-    val path = Path().apply {
-        moveTo(c.x - half, c.y)
-        lineTo(c.x - half * 0.25f, c.y + half * 0.6f)
-        lineTo(c.x + half, c.y - half * 0.6f)
-    }
-    drawPath(path, color = Color.White, style = Stroke(width = 1.5.dp.toPx()))
 }

@@ -17,6 +17,8 @@ import java.time.temporal.TemporalAdjusters
  *  - "MONTHLY:LAST"        last day of the month
  *  - "YEARLY:08-10"        every year on month-day
  *  - "EVERY:90m|12h|3d|2w" custom fixed interval
+ *  - "EVERY:3y"            custom interval in whole years (calendar-based,
+ *                           not a fixed Duration, so leap years don't drift it)
  */
 sealed class RepeatRule {
     object None : RepeatRule()
@@ -25,6 +27,7 @@ sealed class RepeatRule {
     data class Monthly(val dayOfMonth: Int, val last: Boolean = false) : RepeatRule()
     data class Yearly(val monthDay: MonthDay) : RepeatRule()
     data class Every(val interval: Duration) : RepeatRule()
+    data class EveryYears(val years: Int) : RepeatRule()
 
     fun encode(): String = when (this) {
         None -> ""
@@ -33,6 +36,7 @@ sealed class RepeatRule {
         is Monthly -> if (last) "MONTHLY:LAST" else "MONTHLY:$dayOfMonth"
         is Yearly -> "YEARLY:%02d-%02d".format(monthDay.monthValue, monthDay.dayOfMonth)
         is Every -> "EVERY:" + encodeDuration(interval)
+        is EveryYears -> "EVERY:${years}y"
     }
 
     /**
@@ -84,6 +88,14 @@ sealed class RepeatRule {
                 while (!next.isAfter(after)) next = next.plus(interval)
                 next
             }
+            is EveryYears -> {
+                if (years <= 0) return null
+                var next = previous
+                // Calendar years, not a fixed Duration: plusYears() clamps
+                // 29 Feb onto 28 Feb in non-leap years the same way Yearly does.
+                while (!next.isAfter(after)) next = next.plusYears(years.toLong())
+                next
+            }
         }
     }
 
@@ -116,7 +128,12 @@ sealed class RepeatRule {
                         runCatching { Yearly(MonthDay.of(month!!, day)) }.getOrDefault(None)
                     } else None
                 }
-                "EVERY" -> decodeDuration(parts.getOrElse(1) { "" })?.let { Every(it) } ?: None
+                "EVERY" -> {
+                    val arg = parts.getOrElse(1) { "" }.trim()
+                    val years = Regex("^(\\d+)y$").find(arg)?.groupValues?.get(1)?.toIntOrNull()
+                    if (years != null && years > 0) EveryYears(years)
+                    else decodeDuration(arg)?.let { Every(it) } ?: None
+                }
                 else -> None
             }
         }

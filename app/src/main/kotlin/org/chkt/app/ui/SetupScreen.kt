@@ -70,6 +70,9 @@ object SetupCheck {
         return pm.isIgnoringBatteryOptimizations(context.packageName)
     }
 
+    fun microphoneOk(context: Context): Boolean =
+        context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
     fun allEssentialGranted(context: Context): Boolean =
         notificationsOk(context) && exactAlarmsOk(context) &&
             fullScreenOk(context) && batteryOk(context)
@@ -95,8 +98,12 @@ fun SetupScreen(onDone: () -> Unit) {
     val fullScreenOk = remember(refresh) { SetupCheck.fullScreenOk(context) }
     var batteryOk by remember { mutableStateOf(SetupCheck.batteryOk(context)) }
     remember(refresh) { batteryOk = SetupCheck.batteryOk(context); 0 }
+    val micOk = remember(refresh) { SetupCheck.microphoneOk(context) }
 
     val askNotifications = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { refresh++ }
+    val askMic = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { refresh++ }
 
@@ -160,6 +167,14 @@ fun SetupScreen(onDone: () -> Unit) {
                 Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                     .setData(Uri.parse("package:" + context.packageName))
             )
+        }
+
+        SetupRow(
+            title = "Microphone",
+            detail = "Only needed for the home-screen widget that adds a reminder by voice. Optional.",
+            granted = micOk,
+        ) {
+            askMic.launch(Manifest.permission.RECORD_AUDIO)
         }
 
         Spacer(Modifier.height(8.dp))

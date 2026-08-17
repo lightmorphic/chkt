@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- minHeight is kept well under one cell's worth: some launchers compute
+     row-span from minHeight using their own (taller) cell size rather than
+     the standard 70dp formula, which was rounding this up to two rows. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="40dp"
-    android:minHeight="40dp"
+    android:minHeight="1dp"
     android:targetCellWidth="1"
     android:targetCellHeight="1"
     android:resizeMode="none"
