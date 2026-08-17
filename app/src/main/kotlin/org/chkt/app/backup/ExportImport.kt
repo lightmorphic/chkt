@@ -98,8 +98,7 @@ object ExportImport {
                 notes = o.optString("notes", ""),
                 dueAt = if (o.isNull("dueAt")) null else o.getLong("dueAt"),
                 repeatRule = o.optString("repeatRule", ""),
-                alertMode = runCatching { AlertMode.valueOf(o.optString("alertMode")) }
-                    .getOrDefault(AlertMode.RING_AND_SPEAK),
+                alertMode = AlertMode.fromStored(o.optString("alertMode")),
                 preTone = o.optBoolean("preTone", false),
                 enabled = o.optBoolean("enabled", true),
                 vibrate = o.optBoolean("vibrate", true),

@@ -149,8 +149,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                         )
                     }) { Text("Allow full-screen alarms") }
                 }
-                val hasTts = remember { Speaker.engineInstalled(context) }
-                if (!hasTts) {
+                val recommendSherpa = remember { Speaker.shouldRecommendSherpa(context) }
+                if (recommendSherpa) {
                     Text(
                         context.getString(org.chkt.app.R.string.tts_missing_body),
                         style = MaterialTheme.typography.bodyMedium,
@@ -159,39 +159,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Speaker.SHERPA_FDROID_URL)))
                     }) { Text(context.getString(org.chkt.app.R.string.tts_get_sherpa)) }
                 }
-            }
-
-            SettingsCard("Alert sound") {
-                Text(
-                    "The notification sound CHKT alerts with on this phone. Reminders set to ring use this before any speech.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                val alertSound by repo.settings.alertSoundUri.collectAsState(initial = null)
-                val pickSound = rememberLauncherForActivityResult(
-                    ActivityResultContracts.StartActivityForResult()
-                ) { result ->
-                    if (result.resultCode == android.app.Activity.RESULT_OK) {
-                        val uri: Uri? = if (Build.VERSION.SDK_INT >= 33) {
-                            result.data?.getParcelableExtra(
-                                android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
-                        } else {
-                            @Suppress("DEPRECATION")
-                            result.data?.getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-                        }
-                        scope.launch { repo.settings.setAlertSound(uri?.toString()) }
-                    }
-                }
                 OutlinedButton(onClick = {
-                    val intent = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
-                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
-                            android.media.RingtoneManager.TYPE_NOTIFICATION)
-                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "CHKT alert sound")
-                    alertSound?.let {
-                        intent.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(it))
+                    try {
+                        // No public Settings.ACTION_* constant for this exists;
+                        // this is the action AOSP's own Settings app registers.
+                        context.startActivity(Intent("com.android.settings.TTS_SETTINGS"))
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        // No system TTS settings screen on this ROM; nothing more we can do.
                     }
-                    pickSound.launch(intent)
-                }) { Text(if (alertSound == null) "Choose alert sound (using system default)" else "Change alert sound") }
+                }) { Text("Android voice engine settings") }
             }
 
             SettingsCard("Quiet hours") {
@@ -246,6 +222,18 @@ fun SettingsScreen(onBack: () -> Unit) {
                         }
                     })
                     Text("  Sync on")
+                }
+                if (sync.enabled) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+                        IconButton24(ChktIcon.Tick, "Active", Color(0xFF2E8B6F)) {}
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            if (sync.lastSyncAt == 0L) "Active, hasn't synced yet"
+                            else "Active, last synced " + relativeTime(sync.lastSyncAt),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF2E8B6F),
+                        )
+                    }
                 }
                 OutlinedTextField(
                     value = server, onValueChange = { server = it },
@@ -378,4 +366,14 @@ private fun MinuteField(label: String, minutes: Int, onChange: (Int) -> Unit) {
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth(0.45f),
     )
+}
+
+private fun relativeTime(epochMillis: Long): String {
+    val minutes = (System.currentTimeMillis() - epochMillis) / 60_000
+    return when {
+        minutes < 1 -> "just now"
+        minutes < 60 -> "$minutes min ago"
+        minutes < 24 * 60 -> "${minutes / 60} hr ago"
+        else -> "${minutes / (24 * 60)} d ago"
+    }
 }

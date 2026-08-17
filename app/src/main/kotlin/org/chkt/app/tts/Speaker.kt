@@ -54,14 +54,28 @@ class Speaker(
     }
 
     companion object {
-        /** True if any TTS engine is installed on the device. */
-        fun engineInstalled(context: Context): Boolean {
+        private const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
+        private const val SHERPA_PACKAGE = "org.woheller69.ttsengine"
+        const val SHERPA_FDROID_URL = "https://f-droid.org/packages/org.woheller69.ttsengine/"
+
+        private fun installedEnginePackages(context: Context): List<String> {
             val probe = TextToSpeech(context) { }
-            val has = probe.engines.isNotEmpty()
+            val packages = probe.engines.map { it.name }
             probe.shutdown()
-            return has
+            return packages
         }
 
-        const val SHERPA_FDROID_URL = "https://f-droid.org/packages/org.woheller69.ttsengine/"
+        /** True if any TTS engine is installed on the device. */
+        fun engineInstalled(context: Context): Boolean = installedEnginePackages(context).isNotEmpty()
+
+        /** True unless neither Google's TTS nor Sherpa TTS is present — the
+         * two engines CHKT knows will actually speak reminders out loud.
+         * Devices without Google Play Services (GrapheneOS etc.) commonly
+         * lack the former, so this is what decides whether to nudge toward
+         * installing Sherpa, not just "is anything at all installed". */
+        fun shouldRecommendSherpa(context: Context): Boolean {
+            val packages = installedEnginePackages(context)
+            return GOOGLE_TTS_PACKAGE !in packages && SHERPA_PACKAGE !in packages
+        }
     }
 }

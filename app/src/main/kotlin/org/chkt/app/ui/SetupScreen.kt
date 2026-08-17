@@ -26,7 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,8 +78,6 @@ object SetupCheck {
 @Composable
 fun SetupScreen(onDone: () -> Unit) {
     val context = LocalContext.current
-    val repo = LocalRepository.current
-    val scope = rememberCoroutineScope()
 
     // Recheck every permission each time the user returns from a system dialog.
     var refresh by remember { mutableIntStateOf(0) }
@@ -104,23 +100,6 @@ fun SetupScreen(onDone: () -> Unit) {
         ActivityResultContracts.RequestPermission()
     ) { refresh++ }
 
-    var soundPicked by remember { mutableStateOf(false) }
-    val pickSound = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val uri: Uri? = if (Build.VERSION.SDK_INT >= 33) {
-                result.data?.getParcelableExtra(
-                    android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                result.data?.getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-            }
-            scope.launch { repo.settings.setAlertSound(uri?.toString()) }
-            soundPicked = true
-        }
-    }
-
     Surface(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
@@ -131,7 +110,7 @@ fun SetupScreen(onDone: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Text("Let CHKT wake you up properly", fontSize = 26.sp, lineHeight = 34.sp)
         Text(
-            "Reminders that ring and speak need a few permissions. Without them, alerts arrive late, quietly, or not at all.",
+            "Reminders that speak need a few permissions. Without them, alerts arrive late, quietly, or not at all.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -181,31 +160,6 @@ fun SetupScreen(onDone: () -> Unit) {
                 Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                     .setData(Uri.parse("package:" + context.packageName))
             )
-        }
-
-        Card {
-            Row(
-                Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Alert sound", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        if (soundPicked) "Chosen." else "Optional. The sound alerts ring with; system default until you pick one.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                OutlinedButton(onClick = {
-                    pickSound.launch(
-                        Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
-                            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
-                                android.media.RingtoneManager.TYPE_NOTIFICATION)
-                            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "CHKT alert sound")
-                    )
-                }) { Text("Choose") }
-            }
         }
 
         Spacer(Modifier.height(8.dp))

@@ -46,7 +46,6 @@ class AppSettings(private val context: Context) {
         val syncServer = stringPreferencesKey("sync_server")
         val syncKey = stringPreferencesKey("sync_key")
         val syncLast = longPreferencesKey("sync_last")
-        val alertSound = stringPreferencesKey("alert_sound")
         val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
     }
 
@@ -55,13 +54,6 @@ class AppSettings(private val context: Context) {
 
     suspend fun setAutoUpdateCheck(enabled: Boolean) = context.store.edit {
         it[Keys.autoUpdateCheck] = enabled
-    }
-
-    /** The notification sound CHKT alerts with, chosen per phone. Null = system default. */
-    val alertSoundUri: Flow<String?> = context.store.data.map { it[Keys.alertSound] }
-
-    suspend fun setAlertSound(uri: String?) = context.store.edit {
-        if (uri == null) it.remove(Keys.alertSound) else it[Keys.alertSound] = uri
     }
 
     val quietHours: Flow<QuietHours> = context.store.data.map { p ->

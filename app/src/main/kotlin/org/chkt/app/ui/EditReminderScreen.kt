@@ -71,8 +71,7 @@ fun EditReminderScreen(
     var date by remember { mutableStateOf<LocalDate?>(LocalDate.now()) }
     var time by remember { mutableStateOf(LocalTime.of((LocalTime.now().hour + 1) % 24, 0)) }
     var rule by remember { mutableStateOf<RepeatRule>(RepeatRule.None) }
-    var alertMode by remember { mutableStateOf(AlertMode.RING_AND_SPEAK) }
-    var preTone by remember { mutableStateOf(false) }
+    var alertMode by remember { mutableStateOf(AlertMode.NOTIFY_AND_SPEAK) }
     var vibrate by remember { mutableStateOf(true) }
     var respectDnd by remember { mutableStateOf(false) }
     var nagInterval by remember { mutableStateOf(0) }
@@ -101,7 +100,7 @@ fun EditReminderScreen(
                     date = zdt.toLocalDate(); time = zdt.toLocalTime().withSecond(0).withNano(0)
                 } ?: run { date = null }
                 rule = RepeatRule.decode(r.repeatRule)
-                alertMode = r.alertMode; preTone = r.preTone
+                alertMode = r.alertMode
                 vibrate = r.vibrate; respectDnd = r.respectDnd
                 nagInterval = r.nagIntervalMinutes; nagStopAfter = r.nagStopAfterMinutes
                 deleteAfterDismissed = r.deleteAfterDismissed
@@ -126,7 +125,6 @@ fun EditReminderScreen(
             dueAt = dueAt,
             repeatRule = rule.encode(),
             alertMode = alertMode,
-            preTone = preTone,
             vibrate = vibrate,
             respectDnd = respectDnd,
             nagIntervalMinutes = nagInterval,
@@ -207,10 +205,6 @@ fun EditReminderScreen(
 
             SectionLabel("Alert")
             AlertModePicker(alertMode) { alertMode = it }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = preTone, onCheckedChange = { preTone = it })
-                Text("  Play a tone before speaking", style = MaterialTheme.typography.bodyMedium)
-            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = vibrate, onCheckedChange = { vibrate = it })
                 Text("  Vibrate", style = MaterialTheme.typography.bodyMedium)
@@ -435,11 +429,10 @@ private fun RepeatPicker(rule: RepeatRule, time: LocalTime, onChange: (RepeatRul
 private fun AlertModePicker(mode: AlertMode, onChange: (AlertMode) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = mode == AlertMode.RING_AND_SPEAK, onClick = { onChange(AlertMode.RING_AND_SPEAK) }, label = { Text("Ring + speak") })
-            FilterChip(selected = mode == AlertMode.RING_ONLY, onClick = { onChange(AlertMode.RING_ONLY) }, label = { Text("Ring only") })
+            FilterChip(selected = mode == AlertMode.NOTIFY_AND_SPEAK, onClick = { onChange(AlertMode.NOTIFY_AND_SPEAK) }, label = { Text("Notification + voice") })
+            FilterChip(selected = mode == AlertMode.SPEAK_ONLY, onClick = { onChange(AlertMode.SPEAK_ONLY) }, label = { Text("Voice only") })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = mode == AlertMode.SPEAK_ONLY, onClick = { onChange(AlertMode.SPEAK_ONLY) }, label = { Text("Speak only") })
             FilterChip(selected = mode == AlertMode.NOTIFY_ONLY, onClick = { onChange(AlertMode.NOTIFY_ONLY) }, label = { Text("Notification only") })
         }
     }

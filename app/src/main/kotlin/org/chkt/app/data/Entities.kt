@@ -5,7 +5,19 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-enum class AlertMode { RING_AND_SPEAK, RING_ONLY, SPEAK_ONLY, NOTIFY_ONLY }
+enum class AlertMode {
+    NOTIFY_AND_SPEAK, SPEAK_ONLY, NOTIFY_ONLY;
+
+    companion object {
+        /** Accepts old stored names from before ringing was removed as an
+         * alert component, so existing reminders don't crash or reset. */
+        fun fromStored(v: String): AlertMode = when (v) {
+            "RING_AND_SPEAK" -> NOTIFY_AND_SPEAK
+            "RING_ONLY" -> NOTIFY_ONLY
+            else -> runCatching { valueOf(v) }.getOrDefault(NOTIFY_AND_SPEAK)
+        }
+    }
+}
 
 enum class LocationTrigger { NONE, ARRIVE, LEAVE }
 
@@ -27,8 +39,9 @@ data class Reminder(
     val dueAt: Long?,
     /** Repeat rule string, see [org.chkt.app.domain.RepeatRule]. Empty = one-off. */
     val repeatRule: String = "",
-    val alertMode: AlertMode = AlertMode.RING_AND_SPEAK,
-    /** Play a short tone before the spoken text. */
+    val alertMode: AlertMode = AlertMode.NOTIFY_AND_SPEAK,
+    /** No longer settable in the UI; kept only so existing rows don't need
+     * a destructive schema migration. */
     val preTone: Boolean = false,
     val enabled: Boolean = true,
     /** Vibrate when the alert fires. */

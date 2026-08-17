@@ -5,9 +5,6 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
@@ -16,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.chkt.app.R
 import org.chkt.app.data.AlertMode
@@ -27,16 +23,14 @@ import org.chkt.app.tts.Speaker
 import java.time.LocalTime
 
 /**
- * Runs one alert from start to finish: ringtone, optional pre-tone, spoken
- * text, full-screen notification, and the Done/Snooze actions. Started by
- * AlarmReceiver; stops itself when the user responds or audio finishes.
+ * Runs one alert from start to finish: spoken text and/or a full-screen
+ * notification, and the Done/Snooze actions. Started by AlarmReceiver;
+ * stops itself when the user responds or audio finishes.
  */
 class AlertService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var player: MediaPlayer? = null
     private var speaker: Speaker? = null
     private var wakeLock: PowerManager.WakeLock? = null
-    private var alertSoundUri: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -77,35 +71,14 @@ class AlertService : Service() {
                 return@launch
             }
 
-            startForeground(NOTIF_ID, buildNotification(reminder, firedDueAt, fullScreen = true, silentChannel = false))
+            // Notification-and-speak shows the full-screen alert; speak-only
+            // just talks, no full-screen popup or persistent banner.
+            val fullScreen = reminder.alertMode == AlertMode.NOTIFY_AND_SPEAK
+            startForeground(NOTIF_ID, buildNotification(reminder, firedDueAt, fullScreen = fullScreen, silentChannel = false))
             if (reminder.vibrate) vibrate()
-            alertSoundUri = repo.settings.alertSoundUri.first()
-            playAlert(reminder)
+            speakText(reminder)
         }
         return START_NOT_STICKY
-    }
-
-    private fun playAlert(reminder: Reminder) {
-        val speak = reminder.alertMode == AlertMode.RING_AND_SPEAK || reminder.alertMode == AlertMode.SPEAK_ONLY
-        val ring = reminder.alertMode == AlertMode.RING_AND_SPEAK || reminder.alertMode == AlertMode.RING_ONLY
-
-        val afterRing: () -> Unit = {
-            if (speak) {
-                if (reminder.preTone) playTone(reminder) { speakText(reminder) } else speakText(reminder)
-            } else {
-                finishAfterDelay()
-            }
-        }
-        if (ring) playRingtone(reminder, afterRing) else afterRing()
-    }
-
-    private fun playRingtone(reminder: Reminder, onDone: () -> Unit) {
-        // The alert sound is the notification sound chosen in CHKT's settings
-        // on this phone; system default notification sound until one is picked.
-        val uri = alertSoundUri?.let { android.net.Uri.parse(it) }
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        playUri(uri, respectDnd = reminder.respectDnd, onDone = onDone)
     }
 
     private fun vibrate() {
@@ -117,35 +90,6 @@ class AlertService : Service() {
         }
         val pattern = longArrayOf(0, 400, 250, 400, 250, 400)
         vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1))
-    }
-
-    private fun playTone(reminder: Reminder, onDone: () -> Unit) {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        playUri(uri, respectDnd = reminder.respectDnd, onDone = onDone)
-    }
-
-    private fun playUri(uri: android.net.Uri?, respectDnd: Boolean, onDone: () -> Unit) {
-        if (uri == null) { onDone(); return }
-        try {
-            player?.release()
-            player = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        // Alarm-stream audio cuts through Do Not Disturb;
-                        // notification-stream audio lets DND silence it.
-                        .setUsage(if (respectDnd) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                setDataSource(this@AlertService, uri)
-                setOnCompletionListener { onDone() }
-                setOnErrorListener { _, _, _ -> onDone(); true }
-                prepare()
-                start()
-            }
-        } catch (e: Exception) {
-            onDone()
-        }
     }
 
     private fun speakText(reminder: Reminder) {
@@ -167,7 +111,6 @@ class AlertService : Service() {
     }
 
     private fun stopAudio() {
-        player?.release(); player = null
         speaker?.shutdown(); speaker = null
     }
 

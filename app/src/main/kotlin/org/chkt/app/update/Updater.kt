@@ -84,29 +84,60 @@ object Updater {
         }
     }
 
-    /** Downloads the release APK and hands it to Android's installer. */
-    suspend fun downloadAndInstall(context: Context, info: UpdateInfo): String? =
-        withContext(Dispatchers.IO) {
-            val url = info.apkUrl ?: return@withContext "That release has no APK attached."
-            try {
-                val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-                val apk = File(dir, "chkt-${info.version}.apk")
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = 10_000
-                conn.readTimeout = 60_000
-                conn.instanceFollowRedirects = true
-                conn.inputStream.use { input -> apk.outputStream().use { input.copyTo(it) } }
+    sealed class DownloadResult {
+        data class Ok(val apk: File) : DownloadResult()
+        data class Failed(val message: String) : DownloadResult()
+    }
 
-                val uri = FileProvider.getUriForFile(context, "org.chkt.app.files", apk)
-                context.startActivity(
-                    Intent(Intent.ACTION_VIEW)
-                        .setDataAndType(uri, "application/vnd.android.package-archive")
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                )
-                null
-            } catch (e: Exception) {
-                "Download failed: ${e.message ?: "unknown error"}"
+    /** Downloads the release APK to cache, reporting 0f..1f progress as it goes. */
+    suspend fun downloadUpdate(
+        context: Context,
+        info: UpdateInfo,
+        onProgress: (Float) -> Unit = {},
+    ): DownloadResult = withContext(Dispatchers.IO) {
+        val url = info.apkUrl ?: return@withContext DownloadResult.Failed("That release has no APK attached.")
+        try {
+            val dir = File(context.cacheDir, "updates").apply { mkdirs() }
+            val apk = File(dir, "chkt-${info.version}.apk")
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 60_000
+            conn.instanceFollowRedirects = true
+            val total = conn.contentLength
+            conn.inputStream.use { input ->
+                apk.outputStream().use { output ->
+                    val buffer = ByteArray(8 * 1024)
+                    var readSoFar = 0L
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        output.write(buffer, 0, n)
+                        readSoFar += n
+                        if (total > 0) onProgress((readSoFar.toFloat() / total).coerceIn(0f, 1f))
+                    }
+                }
             }
+            DownloadResult.Ok(apk)
+        } catch (e: Exception) {
+            DownloadResult.Failed("Download failed: ${e.message ?: "unknown error"}")
+        }
+    }
+
+    /** Hands a downloaded release APK to Android's own installer. */
+    fun install(context: Context, apk: File) {
+        val uri = FileProvider.getUriForFile(context, "org.chkt.app.files", apk)
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        )
+    }
+
+    /** Downloads the release APK and hands it to Android's installer in one step. */
+    suspend fun downloadAndInstall(context: Context, info: UpdateInfo): String? =
+        when (val result = downloadUpdate(context, info)) {
+            is DownloadResult.Ok -> { install(context, result.apk); null }
+            is DownloadResult.Failed -> result.message
         }
 
     /** True when `candidate` is a strictly newer x.y.z than `current`. */

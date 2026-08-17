@@ -66,6 +66,12 @@ fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ChktLogo()
                         Text("  CHKT")
+                        Text(
+                            "  v" + org.chkt.app.BuildConfig.VERSION_NAME + "  ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        UpdateStatusDot()
                     }
                 },
                 actions = {

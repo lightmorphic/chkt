@@ -9,7 +9,7 @@ import androidx.room.TypeConverters
 
 class Converters {
     @TypeConverter fun alertModeToString(v: AlertMode): String = v.name
-    @TypeConverter fun stringToAlertMode(v: String): AlertMode = AlertMode.valueOf(v)
+    @TypeConverter fun stringToAlertMode(v: String): AlertMode = AlertMode.fromStored(v)
     @TypeConverter fun locationTriggerToString(v: LocationTrigger): String = v.name
     @TypeConverter fun stringToLocationTrigger(v: String): LocationTrigger = LocationTrigger.valueOf(v)
     @TypeConverter fun logActionToString(v: LogAction): String = v.name
