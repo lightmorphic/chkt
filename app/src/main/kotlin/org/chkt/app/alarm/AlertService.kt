@@ -161,10 +161,13 @@ class AlertService : Service() {
     }
 
     private fun buildNotification(reminder: Reminder, dueAt: Long, fullScreen: Boolean, silentChannel: Boolean): Notification {
+        // Voice-only alerts skip the notification sound — the spoken title
+        // is the alert, a ding on top would be redundant.
+        val quietDing = reminder.alertMode == AlertMode.SPEAK_ONLY
         val channel = when {
             silentChannel -> Notifications.CHANNEL_SILENT
-            reminder.respectDnd -> Notifications.CHANNEL_POLITE
-            else -> Notifications.CHANNEL_ALARMS
+            reminder.respectDnd -> if (quietDing) Notifications.CHANNEL_POLITE_QUIET else Notifications.channelPolite(this)
+            else -> if (quietDing) Notifications.CHANNEL_ALARMS_QUIET else Notifications.channelAlarms(this)
         }
 
         fun serviceAction(action: String, extra: Int? = null): PendingIntent {

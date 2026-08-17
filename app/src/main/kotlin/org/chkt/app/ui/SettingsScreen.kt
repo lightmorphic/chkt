@@ -170,6 +170,41 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }) { Text("Android voice engine settings") }
             }
 
+            SettingsCard("Notification sound") {
+                Text(
+                    "The sound CHKT's notifications play. Applies to reminders that aren't set to Voice only.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                var soundLabel by remember {
+                    mutableStateOf(ringtoneTitle(context, org.chkt.app.alarm.Notifications.soundUri(context)))
+                }
+                val pickSound = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartActivityForResult()
+                ) { result ->
+                    if (result.resultCode == android.app.Activity.RESULT_OK) {
+                        val uri: Uri? = if (Build.VERSION.SDK_INT >= 33) {
+                            result.data?.getParcelableExtra(
+                                android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            result.data?.getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+                        }
+                        org.chkt.app.alarm.Notifications.setSoundUri(context, uri)
+                        soundLabel = ringtoneTitle(context, uri)
+                    }
+                }
+                OutlinedButton(onClick = {
+                    val current = org.chkt.app.alarm.Notifications.soundUri(context)
+                    val intent = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
+                            android.media.RingtoneManager.TYPE_NOTIFICATION)
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "CHKT notification sound")
+                        .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, current)
+                    pickSound.launch(intent)
+                }) { Text(soundLabel) }
+            }
+
             SettingsCard("Quiet hours") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = quiet.enabled, onCheckedChange = {
@@ -376,4 +411,12 @@ private fun relativeTime(epochMillis: Long): String {
         minutes < 24 * 60 -> "${minutes / 60} hr ago"
         else -> "${minutes / (24 * 60)} d ago"
     }
+}
+
+private fun ringtoneTitle(context: Context, uri: Uri?): String {
+    if (uri == null) return "Choose notification sound"
+    val title = runCatching {
+        android.media.RingtoneManager.getRingtone(context, uri)?.getTitle(context)
+    }.getOrNull()
+    return title ?: "Choose notification sound"
 }
