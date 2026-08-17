@@ -58,6 +58,21 @@ class AlertService : Service() {
                 stopSelf(); return@launch
             }
             val firedDueAt = reminder.snoozedUntil ?: reminder.dueAt ?: System.currentTimeMillis()
+
+            // Neither AlarmReceiver nor the OS guarantees exactly-once
+            // delivery (a redelivered broadcast, or a race with the
+            // location-triggered path for the same reminder, are both
+            // possible) — without this, a duplicate delivery would not just
+            // double the alert sound but double-advance a repeat rule via
+            // onFired() below.
+            val fireKey = "$id:$firedDueAt"
+            val isDuplicate = synchronized(recentlyFired) { !recentlyFired.add(fireKey) }
+            if (isDuplicate) { stopSelf(); return@launch }
+            scope.launch {
+                delay(10_000)
+                synchronized(recentlyFired) { recentlyFired.remove(fireKey) }
+            }
+
             val quiet = repo.settings.quietHoursNow().contains(LocalTime.now())
 
             // Handles nag re-alerts and arms whatever alarm comes next, so a
@@ -199,6 +214,9 @@ class AlertService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setOngoing(fullScreen)
             .setAutoCancel(true)
+            // A later update to this same notification (any re-post while
+            // it's still up) must not replay the channel's sound/vibration.
+            .setOnlyAlertOnce(true)
             .setContentIntent(fullScreenIntent)
             .setDeleteIntent(serviceAction(ACTION_DISMISSED))
             .addAction(0, getString(R.string.action_done), serviceAction(ACTION_DONE))
@@ -225,5 +243,9 @@ class AlertService : Service() {
         const val ACTION_STOP_AUDIO = "org.chkt.app.STOP_AUDIO"
         const val EXTRA_DUE_AT = "due_at"
         const val EXTRA_SNOOZE_MINUTES = "snooze_minutes"
+
+        /** "reminderId:dueAt" keys seen in the last few seconds — guards
+         * against duplicate delivery (see onStartCommand). */
+        private val recentlyFired = mutableSetOf<String>()
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -220,6 +222,28 @@ fun SettingsScreen(onBack: () -> Unit) {
                         MinuteField("To", quiet.endMinutes) {
                             scope.launch { repo.settings.setQuietHours(quiet.copy(endMinutes = it)) }
                         }
+                    }
+                }
+            }
+
+            SettingsCard("Snooze times") {
+                Text(
+                    "The six lengths offered when snoozing a fired alert.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                // Not collectAsState(initial = DEFAULT): SnoozeSlotEditor
+                // seeds its text fields once, on its first composition, and
+                // deliberately never re-derives from later prop changes (so
+                // it doesn't reformat mid-typing) — if it first composed
+                // against the synchronous DEFAULT placeholder before the
+                // real persisted value arrived a frame later, it would be
+                // stuck showing the default forever. Wait for the real
+                // first emission instead of ever showing the placeholder.
+                var snoozeMinutes by remember { mutableStateOf<List<Int>?>(null) }
+                LaunchedEffect(Unit) { repo.settings.snoozeMinutes.collect { snoozeMinutes = it } }
+                snoozeMinutes?.let { current ->
+                    SnoozeTimesEditor(current) { updated ->
+                        scope.launch { repo.settings.setSnoozeMinutes(updated) }
                     }
                 }
             }
@@ -419,4 +443,43 @@ private fun ringtoneTitle(context: Context, uri: Uri?): String {
         android.media.RingtoneManager.getRingtone(context, uri)?.getTitle(context)
     }.getOrNull()
     return title ?: "Choose notification sound"
+}
+
+@Composable
+private fun SnoozeTimesEditor(values: List<Int>, onChange: (List<Int>) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        values.forEachIndexed { index, minutes ->
+            SnoozeSlotEditor(minutes) { newMinutes ->
+                onChange(values.toMutableList().also { it[index] = newMinutes })
+            }
+        }
+    }
+}
+
+@Composable
+private fun SnoozeSlotEditor(minutes: Int, onChange: (Int) -> Unit) {
+    // Seeded once from the incoming value, not re-derived on every push —
+    // otherwise every keystroke's round-trip through the settings Flow
+    // would reformat the field mid-typing (same reasoning as the repeat
+    // picker's EveryPicker).
+    val seed = remember { org.chkt.app.domain.SnoozeDurations.decompose(minutes) }
+    var amount by remember { mutableStateOf(seed.first.toString()) }
+    var unit by remember { mutableStateOf(seed.second) }
+
+    fun push() {
+        val n = amount.toIntOrNull() ?: return
+        if (n <= 0) return
+        onChange(org.chkt.app.domain.SnoozeDurations.compose(n, unit))
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = amount,
+            onValueChange = { amount = it; push() },
+            modifier = Modifier.width(80.dp),
+        )
+        listOf("m" to "min", "h" to "hrs", "d" to "days").forEach { (code, label) ->
+            FilterChip(selected = unit == code, onClick = { unit = code; push() }, label = { Text(label) })
+        }
+    }
 }

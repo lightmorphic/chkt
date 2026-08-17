@@ -35,3 +35,19 @@ First release.
 - Alert sound chosen per phone in Settings (notification sound picker).
 - Update check against the project GitHub releases (manual, or opt-in
   daily check with a notification) and one-tap install of new versions.
+- Custom snooze lengths: choose all six durations offered on a fired alert
+  in Settings, shared with the alert screen.
+- Yearly custom repeat interval ("every N years").
+
+### Fixed
+- Notification sound stopped playing after channel changes: versioned
+  notification channel IDs so a changed sound actually takes effect (Android
+  silently ignores sound changes to an existing channel, even recreated
+  with the same ID).
+- Notification sound and speech played at once with the ding sounding
+  twice: added `setOnlyAlertOnce` plus a duplicate-delivery guard around
+  alert firing.
+- Repeat picker defaulted to today's date instead of the reminder's chosen
+  date for weekly/monthly/yearly repeats.
+- Repeat picker showed the wrong unit/amount ("2 days" instead of "10
+  weeks") when reopening a custom-interval repeat.

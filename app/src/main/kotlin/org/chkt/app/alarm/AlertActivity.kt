@@ -35,9 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.chkt.app.data.Repository
+import org.chkt.app.domain.SnoozeDurations
 import org.chkt.app.ui.theme.ChktTheme
 
 /**
@@ -56,16 +58,18 @@ class AlertActivity : ComponentActivity() {
             ChktTheme {
                 var title by remember { mutableStateOf("") }
                 var notes by remember { mutableStateOf("") }
+                var snoozeOptions by remember { mutableStateOf(SnoozeDurations.DEFAULT) }
                 LaunchedEffect(reminderId) {
-                    val r = withContext(Dispatchers.IO) {
-                        Repository(applicationContext).db.reminders().byId(reminderId)
-                    }
+                    val repo = Repository(applicationContext)
+                    val r = withContext(Dispatchers.IO) { repo.db.reminders().byId(reminderId) }
                     title = r?.title ?: ""
                     notes = r?.notes ?: ""
+                    snoozeOptions = repo.settings.snoozeMinutes.first()
                 }
                 AlertScreen(
                     title = title,
                     notes = notes,
+                    snoozeOptions = snoozeOptions,
                     onDone = { act(AlertService.ACTION_DONE, reminderId, dueAt) },
                     onSnooze = { minutes -> act(AlertService.ACTION_SNOOZE, reminderId, dueAt, minutes) },
                 )
@@ -100,6 +104,7 @@ private val AlertNavy = Color(0xFF111827)
 private fun AlertScreen(
     title: String,
     notes: String,
+    snoozeOptions: List<Int>,
     onDone: () -> Unit,
     onSnooze: (Int) -> Unit,
 ) {
@@ -128,15 +133,15 @@ private fun AlertScreen(
         Text("Snooze", color = AlertNavy.copy(alpha = 0.7f))
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SnoozeButton("10 min", 10, onSnooze)
-            SnoozeButton("30 min", 30, onSnooze)
-            SnoozeButton("1 hr", 60, onSnooze)
+            snoozeOptions.take(3).forEach { minutes ->
+                SnoozeButton(SnoozeDurations.format(minutes), minutes, onSnooze)
+            }
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SnoozeButton("3 hrs", 180, onSnooze)
-            SnoozeButton("12 hrs", 720, onSnooze)
-            SnoozeButton("1 day", 1440, onSnooze)
+            snoozeOptions.drop(3).take(3).forEach { minutes ->
+                SnoozeButton(SnoozeDurations.format(minutes), minutes, onSnooze)
+            }
         }
     }
 }

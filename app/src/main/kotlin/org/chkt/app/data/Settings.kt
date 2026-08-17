@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.chkt.app.domain.SnoozeDurations
 import java.time.LocalTime
 
 private val Context.store by preferencesDataStore(name = "settings")
@@ -47,6 +48,14 @@ class AppSettings(private val context: Context) {
         val syncKey = stringPreferencesKey("sync_key")
         val syncLast = longPreferencesKey("sync_last")
         val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
+        val snoozeMinutes = stringPreferencesKey("snooze_minutes")
+    }
+
+    /** The 6 preset lengths offered when snoozing a fired alert. */
+    val snoozeMinutes: Flow<List<Int>> = context.store.data.map { SnoozeDurations.parse(it[Keys.snoozeMinutes]) }
+
+    suspend fun setSnoozeMinutes(minutes: List<Int>) = context.store.edit {
+        it[Keys.snoozeMinutes] = SnoozeDurations.encode(minutes)
     }
 
     /** Daily update check; opt-in, off by default. */
