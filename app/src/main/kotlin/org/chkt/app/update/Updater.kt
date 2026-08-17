@@ -45,7 +45,21 @@ object Updater {
         data class Failed(val message: String) : CheckResult()
     }
 
-    suspend fun check(): CheckResult = withContext(Dispatchers.IO) {
+    /**
+     * The version actually on disk, not BuildConfig.VERSION_NAME. Installing
+     * an update hands off to Android's installer but doesn't restart this
+     * process, so the compiled-in BuildConfig value stays stale until the
+     * app is relaunched — reading it from PackageManager instead means a
+     * check right after installing correctly sees the new version and
+     * won't keep offering the same "update" over and over.
+     */
+    fun installedVersionName(context: Context): String =
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: BuildConfig.VERSION_NAME
+
+    suspend fun check(context: Context): CheckResult = withContext(Dispatchers.IO) {
+        val current = installedVersionName(context)
         try {
             val conn = URL(RELEASES_URL).openConnection() as HttpURLConnection
             conn.connectTimeout = 10_000
@@ -62,8 +76,8 @@ object Updater {
             val latest = json.optString("tag_name").removePrefix("v")
             if (latest.isBlank()) return@withContext CheckResult.Failed("Couldn't read the latest version.")
 
-            if (!isNewer(latest, BuildConfig.VERSION_NAME)) {
-                return@withContext CheckResult.UpToDate(BuildConfig.VERSION_NAME)
+            if (!isNewer(latest, current)) {
+                return@withContext CheckResult.UpToDate(current)
             }
             var apkUrl: String? = null
             val assets = json.optJSONArray("assets")
@@ -170,7 +184,7 @@ object Updater {
 
 class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val result = Updater.check()
+        val result = Updater.check(applicationContext)
         if (result is Updater.CheckResult.UpdateAvailable) {
             val open = PendingIntent.getActivity(
                 applicationContext, 9001,

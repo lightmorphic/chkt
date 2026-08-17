@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -32,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.chkt.app.data.Reminder
@@ -50,6 +53,7 @@ fun HomeScreen(
 ) {
     val repo = LocalRepository.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val reminders by repo.db.reminders().observeAll().collectAsState(initial = emptyList())
     var activeTag by remember { mutableStateOf<String?>(null) }
 
@@ -66,16 +70,17 @@ fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ChktLogo()
                         Text("  CHKT")
-                        Text(
-                            "  v" + org.chkt.app.BuildConfig.VERSION_NAME + "  ",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        UpdateStatusDot()
                     }
                 },
                 actions = {
                     val tint = MaterialTheme.colorScheme.onSurface
+                    Text(
+                        "v" + org.chkt.app.update.Updater.installedVersionName(context) + "  ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    UpdateStatusDot()
+                    Spacer(Modifier.width(8.dp))
                     IconButton24(ChktIcon.Stats, "Statistics", tint, onClick = onOpenStats)
                     IconButton24(ChktIcon.Settings, "Settings", tint, onClick = onOpenSettings)
                 },

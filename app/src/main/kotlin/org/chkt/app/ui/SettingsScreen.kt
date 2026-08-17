@@ -283,7 +283,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SettingsCard("App updates") {
                 Text(
-                    "You're on version " + org.chkt.app.BuildConfig.VERSION_NAME + ". Updates come from the CHKT project page; checking only happens when you ask (or daily, if you switch that on).",
+                    "You're on version " + org.chkt.app.update.Updater.installedVersionName(context) + ". Updates come from the CHKT project page; checking only happens when you ask (or daily, if you switch that on).",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 var checking by remember { mutableStateOf(false) }
@@ -293,7 +293,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     OutlinedButton(enabled = !checking, onClick = {
                         checking = true; updateMessage = ""
                         scope.launch {
-                            when (val result = org.chkt.app.update.Updater.check()) {
+                            when (val result = org.chkt.app.update.Updater.check(context)) {
                                 is org.chkt.app.update.Updater.CheckResult.UpToDate ->
                                     updateMessage = "You're up to date (${result.current})."
                                 is org.chkt.app.update.Updater.CheckResult.UpdateAvailable -> {

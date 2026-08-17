@@ -53,7 +53,7 @@ fun UpdateStatusDot() {
     var progress by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(Unit) {
-        state = when (val result = Updater.check()) {
+        state = when (val result = Updater.check(context)) {
             is Updater.CheckResult.UpToDate -> DotState.UpToDate
             is Updater.CheckResult.UpdateAvailable -> DotState.Available(result.info)
             is Updater.CheckResult.Failed -> DotState.Unreachable
