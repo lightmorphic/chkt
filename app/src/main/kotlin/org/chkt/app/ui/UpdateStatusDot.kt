@@ -1,10 +1,7 @@
 package org.chkt.app.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -15,6 +12,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,11 +30,13 @@ import java.io.File
 
 /**
  * Update-status dot for the home screen top bar. Green is the resting state
- * and doubles as a manual "check now" button: tapping it pulses while it
- * checks, then either turns yellow (update found) or pulses back down to
- * green (already current). Tapping yellow downloads; once the download
- * lands the dot turns blue and a dialog offers to install. Red means the
- * last check couldn't reach GitHub at all.
+ * and doubles as a manual "check now" button: tapping it pulses a couple of
+ * times (a fixed, short animation — not tied to how long the network call
+ * actually takes) then settles on yellow if an update was found, or back to
+ * green if not. Tapping yellow downloads (same pulse) and once it lands the
+ * dot turns blue with a dialog offering to install. Red means the last
+ * check couldn't reach GitHub at all. No glyph inside the circle — the
+ * color alone is the signal.
  */
 private enum class DotColor { GREEN, YELLOW, BLUE, RED }
 
@@ -51,10 +51,19 @@ fun UpdateStatusDot() {
     val scope = rememberCoroutineScope()
 
     var color by remember { mutableStateOf(DotColor.GREEN) }
-    var pulsing by remember { mutableStateOf(false) }
     var pendingInfo by remember { mutableStateOf<Updater.UpdateInfo?>(null) }
     var downloadedApk by remember { mutableStateOf<File?>(null) }
     var showInstallDialog by remember { mutableStateOf(false) }
+
+    val pulseScale = remember { Animatable(1f) }
+    var pulseTrigger by remember { mutableIntStateOf(0) }
+    LaunchedEffect(pulseTrigger) {
+        if (pulseTrigger == 0) return@LaunchedEffect
+        repeat(2) {
+            pulseScale.animateTo(1.35f, animationSpec = tween(220, easing = LinearOutSlowInEasing))
+            pulseScale.animateTo(1f, animationSpec = tween(220, easing = LinearOutSlowInEasing))
+        }
+    }
 
     suspend fun check() {
         when (val result = Updater.check(context)) {
@@ -77,11 +86,8 @@ fun UpdateStatusDot() {
         DotColor.GREEN -> {
             description = "Up to date, tap to check for updates"
             onClick = {
-                pulsing = true
-                scope.launch {
-                    check()
-                    pulsing = false
-                }
+                pulseTrigger++
+                scope.launch { check() }
             }
         }
         DotColor.YELLOW -> {
@@ -89,7 +95,7 @@ fun UpdateStatusDot() {
             onClick = {
                 val info = pendingInfo
                 if (info != null) {
-                    pulsing = true
+                    pulseTrigger++
                     scope.launch {
                         when (val result = Updater.downloadUpdate(context, info)) {
                             is Updater.DownloadResult.Ok -> {
@@ -99,7 +105,6 @@ fun UpdateStatusDot() {
                             }
                             is Updater.DownloadResult.Failed -> { /* stays yellow, retry available */ }
                         }
-                        pulsing = false
                     }
                 }
             }
@@ -114,21 +119,10 @@ fun UpdateStatusDot() {
         }
     }
 
-    val transition = rememberInfiniteTransition(label = "update-dot-pulse")
-    val pulseScale by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (pulsing) 1.35f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "update-dot-pulse-scale",
-    )
-
     Canvas(
         modifier = Modifier
             .size(20.dp)
-            .scale(if (pulsing) pulseScale else 1f)
+            .scale(pulseScale.value)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .semantics { contentDescription = description },
     ) {
