@@ -64,3 +64,10 @@ First release.
   the actual next alert — the next occurrence, once the stored time has
   passed — so a fired daily reminder moves down to tomorrow's slot
   immediately instead of squatting at the top for up to an hour.
+- Voice widget showed a raw "Speech recognition failed (code 5)" on
+  phones with no working speech service (e.g. GrapheneOS without Google
+  services and nothing else installed) instead of the friendly
+  no-recognizer guidance: `isRecognitionAvailable()` can return true
+  even though nothing real is bound, so it fails the instant listening
+  starts, with the up-front check none the wiser. ERROR_CLIENT now gets
+  the same "install a recognizer, or add reminders by hand" message.

@@ -44,6 +44,13 @@ class RecordActivity : ComponentActivity() {
     private val state = mutableStateOf<UiState>(UiState.Idle)
     private val scope = MainScope()
 
+    companion object {
+        const val NO_RECOGNIZER_MESSAGE =
+            "No working speech recognition service on this phone. " +
+                "Install one (e.g. FUTO Voice Input from F-Droid) and try again, " +
+                "or add reminders by hand in the app."
+    }
+
     sealed class UiState {
         object Idle : UiState()
         object Listening : UiState()
@@ -77,11 +84,7 @@ class RecordActivity : ComponentActivity() {
 
     private fun beginCapture() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            state.value = UiState.Problem(
-                "No speech recognition service is installed on this phone. " +
-                    "Install one (e.g. FUTO Voice Input from F-Droid) and try again, " +
-                    "or add reminders by hand in the app."
-            )
+            state.value = UiState.Problem(NO_RECOGNIZER_MESSAGE)
             return
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -116,6 +119,13 @@ class RecordActivity : ComponentActivity() {
                         when (error) {
                             SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
                                 "Didn't catch that."
+                            // ERROR_CLIENT: isRecognitionAvailable() can return true even with
+                            // no working recognizer bound (e.g. GrapheneOS with no Google
+                            // services and nothing else installed) — the intent resolves, but
+                            // there's no real service behind it, so it fails the instant
+                            // listening starts. Same guidance as the "none installed" case.
+                            SpeechRecognizer.ERROR_CLIENT ->
+                                NO_RECOGNIZER_MESSAGE
                             else -> "Speech recognition failed (code $error)."
                         }
                     )
