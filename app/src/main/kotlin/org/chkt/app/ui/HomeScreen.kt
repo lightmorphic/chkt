@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.chkt.app.data.Reminder
+import org.chkt.app.domain.nextAlertMillis
 
 /**
  * Opening the app shows what's coming: every reminder in time order, with
@@ -54,7 +55,14 @@ fun HomeScreen(
     val repo = LocalRepository.current
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val reminders by repo.db.reminders().observeAll().collectAsState(initial = emptyList())
+    val unordered by repo.db.reminders().observeAll().collectAsState(initial = emptyList())
+    val reminders = remember(unordered) {
+        unordered.sortedWith(
+            compareByDescending<Reminder> { it.enabled }
+                .thenBy { it.nextAlertMillis() == null }
+                .thenBy { it.nextAlertMillis() ?: Long.MAX_VALUE }
+        )
+    }
     var activeTag by remember { mutableStateOf<String?>(null) }
 
     val allTags = remember(reminders) {

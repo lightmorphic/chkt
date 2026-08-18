@@ -57,3 +57,10 @@ First release.
   (it isn't in the sync JSON contract). A routine sync moments after an
   alert fired silently cancelled the nag cycle. Fixed by preserving the
   device's own nag state across a sync merge.
+- A repeating reminder stayed pinned at the top of the list long after
+  its time passed, still showing today instead of its real next
+  occurrence: the list sorted by the raw stored due time, which only
+  advances once the reminder is answered or nag-times-out. Now sorts by
+  the actual next alert — the next occurrence, once the stored time has
+  passed — so a fired daily reminder moves down to tomorrow's slot
+  immediately instead of squatting at the top for up to an hour.
