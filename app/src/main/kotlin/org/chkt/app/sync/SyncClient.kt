@@ -129,11 +129,15 @@ class SyncClient(private val context: Context) {
         )
         val local = repo.db.reminders().byId(incoming.id)
         if (local != null && local.updatedAt >= incoming.updatedAt) return false
-        repo.db.reminders().upsert(incoming)
+        // nagStartedAt tracks this device's own in-progress re-alert cycle;
+        // the server never sends it (it isn't in the JSON contract), so a
+        // sync merge must never clobber it with the null default.
+        val toStore = incoming.copy(nagStartedAt = local?.nagStartedAt)
+        repo.db.reminders().upsert(toStore)
         // Keep alarms in step with what sync just changed.
         val scheduler = AlarmScheduler(context)
-        if (incoming.deletedAt != null || !incoming.enabled) scheduler.cancel(incoming.id)
-        else scheduler.schedule(incoming)
+        if (toStore.deletedAt != null || !toStore.enabled) scheduler.cancel(toStore.id)
+        else scheduler.schedule(toStore)
         return true
     }
 

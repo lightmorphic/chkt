@@ -51,3 +51,9 @@ First release.
   date for weekly/monthly/yearly repeats.
 - Repeat picker showed the wrong unit/amount ("2 days" instead of "10
   weeks") when reopening a custom-interval repeat.
+- Re-alert nagging (repeat the alert until answered) stopped after the
+  first alert when sync was on: a sync pull always overwrote the local
+  in-progress nag state with null, since the server never sends it
+  (it isn't in the sync JSON contract). A routine sync moments after an
+  alert fired silently cancelled the nag cycle. Fixed by preserving the
+  device's own nag state across a sync merge.
