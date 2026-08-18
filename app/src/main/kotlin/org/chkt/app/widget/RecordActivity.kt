@@ -1,6 +1,7 @@
 package org.chkt.app.widget
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -34,10 +35,14 @@ import org.chkt.app.ui.theme.ChktTheme
 import java.time.ZonedDateTime
 
 /**
- * The tap-to-record flow: tap the widget → this small overlay appears and
- * listens → tap Stop (or just finish speaking) → the phrase becomes a
- * reminder. Speech recognition runs through whatever recognition service the
- * phone has installed; audio never goes anywhere CHKT controls.
+ * The tap-to-record flow: tap the widget → listens → the phrase becomes a
+ * reminder. Speech recognition runs through whatever the phone has: first
+ * tried as a bound RecognitionService (SpeechRecognizer — how Google's
+ * speech services and similar work), falling back to launching whatever
+ * app handles the RECOGNIZE_SPEECH intent as an activity (how FUTO Voice
+ * Input and other privacy-focused, RecognitionService-less recognizers
+ * work — common on GrapheneOS and similar with no Google services). Audio
+ * never goes anywhere CHKT controls either way.
  */
 class RecordActivity : ComponentActivity() {
     private var recognizer: SpeechRecognizer? = null
@@ -66,6 +71,21 @@ class RecordActivity : ComponentActivity() {
         else state.value = UiState.Problem("CHKT needs microphone access to hear the reminder.")
     }
 
+    private val activityRecognizer = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        RecordWidgetReceiver.setActive(this, active = false)
+        val text = result.data
+            ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+        if (result.resultCode != Activity.RESULT_OK || text.isNullOrBlank()) {
+            state.value = UiState.Problem("Didn't catch that.")
+        } else {
+            state.value = UiState.Heard(text)
+            saveParsed(text)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -82,8 +102,14 @@ class RecordActivity : ComponentActivity() {
         beginCapture()
     }
 
+    private fun recognizeIntent() = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+
     private fun beginCapture() {
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+        val hasBoundService = SpeechRecognizer.isRecognitionAvailable(this)
+        val hasRecognizerActivity = recognizeIntent().resolveActivity(packageManager) != null
+        if (!hasBoundService && !hasRecognizerActivity) {
             state.value = UiState.Problem(NO_RECOGNIZER_MESSAGE)
             return
         }
@@ -97,6 +123,16 @@ class RecordActivity : ComponentActivity() {
     private fun startListening() {
         state.value = UiState.Listening
         RecordWidgetReceiver.setActive(this, active = true)
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            startViaRecognitionService()
+        } else {
+            startViaRecognizerActivity()
+        }
+    }
+
+    /** A bound RecognitionService (e.g. Google's speech services): CHKT
+     *  drives listening directly and shows its own "Listening…" overlay. */
+    private fun startViaRecognitionService() {
         recognizer?.destroy()
         recognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
@@ -114,18 +150,22 @@ class RecordActivity : ComponentActivity() {
                 }
 
                 override fun onError(error: Int) {
+                    // ERROR_CLIENT: isRecognitionAvailable() can return true even with
+                    // no working service actually bound (seen on GrapheneOS) — the
+                    // component resolves, but there's nothing real behind it, so it
+                    // fails the instant listening starts. Try the activity-based
+                    // fallback instead of giving up, since a recognizer app that
+                    // only supports that path (e.g. FUTO Voice Input) may still work.
+                    if (error == SpeechRecognizer.ERROR_CLIENT && recognizeIntent().resolveActivity(packageManager) != null) {
+                        startViaRecognizerActivity()
+                        return
+                    }
                     RecordWidgetReceiver.setActive(this@RecordActivity, active = false)
                     state.value = UiState.Problem(
                         when (error) {
                             SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
                                 "Didn't catch that."
-                            // ERROR_CLIENT: isRecognitionAvailable() can return true even with
-                            // no working recognizer bound (e.g. GrapheneOS with no Google
-                            // services and nothing else installed) — the intent resolves, but
-                            // there's no real service behind it, so it fails the instant
-                            // listening starts. Same guidance as the "none installed" case.
-                            SpeechRecognizer.ERROR_CLIENT ->
-                                NO_RECOGNIZER_MESSAGE
+                            SpeechRecognizer.ERROR_CLIENT -> NO_RECOGNIZER_MESSAGE
                             else -> "Speech recognition failed (code $error)."
                         }
                     )
@@ -139,12 +179,22 @@ class RecordActivity : ComponentActivity() {
                 override fun onPartialResults(partialResults: Bundle?) {}
                 override fun onEvent(eventType: Int, params: Bundle?) {}
             })
-            startListening(
-                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-            )
+            startListening(recognizeIntent())
         }
+    }
+
+    /** No bound RecognitionService: launch whatever app handles the
+     *  RECOGNIZE_SPEECH intent as its own activity (FUTO Voice Input and
+     *  similar). That app shows its own listening UI and hands results
+     *  back once the user finishes speaking. */
+    private fun startViaRecognizerActivity() {
+        val intent = recognizeIntent()
+        if (intent.resolveActivity(packageManager) == null) {
+            RecordWidgetReceiver.setActive(this, active = false)
+            state.value = UiState.Problem(NO_RECOGNIZER_MESSAGE)
+            return
+        }
+        activityRecognizer.launch(intent)
     }
 
     private fun saveParsed(text: String) {

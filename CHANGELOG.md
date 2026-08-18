@@ -64,10 +64,13 @@ First release.
   the actual next alert — the next occurrence, once the stored time has
   passed — so a fired daily reminder moves down to tomorrow's slot
   immediately instead of squatting at the top for up to an hour.
-- Voice widget showed a raw "Speech recognition failed (code 5)" on
-  phones with no working speech service (e.g. GrapheneOS without Google
-  services and nothing else installed) instead of the friendly
-  no-recognizer guidance: `isRecognitionAvailable()` can return true
-  even though nothing real is bound, so it fails the instant listening
-  starts, with the up-front check none the wiser. ERROR_CLIENT now gets
-  the same "install a recognizer, or add reminders by hand" message.
+- Voice widget didn't work on phones with no Google services and no
+  RecognitionService-based recognizer installed (e.g. GrapheneOS) — it
+  only ever tried binding to a RecognitionService, which apps like FUTO
+  Voice Input don't implement (they handle the older RECOGNIZE_SPEECH
+  activity intent instead). `isRecognitionAvailable()` could also
+  return true with nothing real bound, failing instantly with a raw
+  "code 5" error. Now falls back to launching whatever app handles the
+  RECOGNIZE_SPEECH intent as an activity when no RecognitionService is
+  bound, so FUTO Voice Input and similar recognizers actually work; only
+  shows the "install a recognizer" message when truly nothing is found.
