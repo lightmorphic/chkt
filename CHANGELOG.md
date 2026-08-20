@@ -118,7 +118,7 @@ First release.
   Save" is the whole gesture. Matching History page on CHKT Server
   (1.1.14).
 
-### Changed (unreleased)
+### Changed (1.0.18)
 - History now takes every ended reminder, not just one-times: a repeating
   or location reminder you switch off moves there too, instead of sitting
   greyed-out at the bottom of the main list. Reuse works the same way —
