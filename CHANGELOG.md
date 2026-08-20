@@ -117,3 +117,9 @@ First release.
   it back on and rolls a stale date forward to today, so "pick a date,
   Save" is the whole gesture. Matching History page on CHKT Server
   (1.1.14).
+
+### Changed (unreleased)
+- History now takes every ended reminder, not just one-times: a repeating
+  or location reminder you switch off moves there too, instead of sitting
+  greyed-out at the bottom of the main list. Reuse works the same way —
+  open it, give it a date, and it's back.

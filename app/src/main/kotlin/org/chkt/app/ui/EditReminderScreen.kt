@@ -46,7 +46,7 @@ import org.chkt.app.data.AlertMode
 import org.chkt.app.data.LocationTrigger
 import org.chkt.app.data.Reminder
 import org.chkt.app.domain.RepeatRule
-import org.chkt.app.domain.isSpentOneOff
+import org.chkt.app.domain.isEnded
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -113,7 +113,7 @@ fun EditReminderScreen(
                 // is the whole gesture — switch it back on and roll a past
                 // date forward to today (same time of day). The Active
                 // switch shows the change; backing out saves nothing.
-                if (r.isSpentOneOff()) {
+                if (r.isEnded()) {
                     active = true
                     if (date?.isBefore(LocalDate.now()) == true) date = LocalDate.now()
                 }

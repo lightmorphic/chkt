@@ -37,7 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.chkt.app.data.Reminder
-import org.chkt.app.domain.isSpentOneOff
+import org.chkt.app.domain.isEnded
 import org.chkt.app.domain.nextAlertMillis
 
 /**
@@ -58,11 +58,11 @@ fun HomeScreen(
     val context = LocalContext.current
     val unordered by repo.db.reminders().observeAll().collectAsState(initial = emptyList())
     val reminders = remember(unordered) {
-        // Spent one-offs live on the History screen, not here — the main
-        // list is what's coming up, not what already happened.
-        unordered.filterNot { it.isSpentOneOff() }.sortedWith(
-            compareByDescending<Reminder> { it.enabled }
-                .thenBy { it.nextAlertMillis() == null }
+        // Ended reminders (answered one-offs, switched-off repeats) live on
+        // the History screen, not here — the main list is what's coming up,
+        // not what already happened. Everything left is enabled.
+        unordered.filterNot { it.isEnded() }.sortedWith(
+            compareBy<Reminder> { it.nextAlertMillis() == null }
                 .thenBy { it.nextAlertMillis() ?: Long.MAX_VALUE }
         )
     }

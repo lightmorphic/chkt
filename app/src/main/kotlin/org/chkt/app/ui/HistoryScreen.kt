@@ -23,12 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.chkt.app.data.Reminder
-import org.chkt.app.domain.isSpentOneOff
+import org.chkt.app.domain.isEnded
 
 /**
- * Where one-time reminders go once they've had their moment. They stay
- * out of the main list, but nothing is lost: look back over what's done,
- * or tap one to give it a new date and bring it back.
+ * Where reminders go once they've ended — answered one-offs and
+ * switched-off repeats alike. They stay out of the main list, but nothing
+ * is lost: look back over what's done, or tap one to give it a new date
+ * and bring it back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +41,7 @@ fun HistoryScreen(
     val scope = rememberCoroutineScope()
     val all by repo.db.reminders().observeAll().collectAsState(initial = emptyList())
     val spent = remember(all) {
-        all.filter { it.isSpentOneOff() }
+        all.filter { it.isEnded() }
             .sortedByDescending { it.dueAt ?: it.updatedAt }
     }
 
@@ -58,7 +59,7 @@ fun HistoryScreen(
         ) {
             item {
                 Text(
-                    "One-time reminders land here once they're done. Tap one to give it a new date and bring it back.",
+                    "Reminders land here once they've ended — one-times that happened and repeats you've switched off. Tap one to give it a new date and bring it back.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
