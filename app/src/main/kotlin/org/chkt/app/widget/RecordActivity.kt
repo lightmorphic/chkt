@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.chkt.app.data.Repository
@@ -224,6 +225,7 @@ class RecordActivity : ComponentActivity() {
 
     override fun onDestroy() {
         recognizer?.destroy()
+        scope.cancel()
         // Safety net: covers Stop being tapped mid-listen, or the activity
         // being torn down before a result/error callback ever arrives.
         RecordWidgetReceiver.setActive(this, active = false)

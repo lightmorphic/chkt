@@ -265,7 +265,11 @@ fun EditReminderScreen(
 
             Button(
                 onClick = ::save,
-                enabled = title.isNotBlank() && (date != null || locationTrigger != LocationTrigger.NONE),
+                // A location trigger without a picked place can never fire,
+                // so don't allow saving one half-configured.
+                enabled = title.isNotBlank() &&
+                    (date != null || locationTrigger != LocationTrigger.NONE) &&
+                    (locationTrigger == LocationTrigger.NONE || (latitude != null && longitude != null)),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Save reminder") }
         }

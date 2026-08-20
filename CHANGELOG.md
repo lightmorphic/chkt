@@ -74,3 +74,37 @@ First release.
   RECOGNIZE_SPEECH intent as an activity when no RecognitionService is
   bound, so FUTO Voice Input and similar recognizers actually work; only
   shows the "install a recognizer" message when truly nothing is found.
+- Re-alert nagging stopped after the first alert even with sync off: the
+  duplicate-delivery guard added in 1.0.11 never forgot what had fired
+  (its cleanup was cancelled with the alert service), and a nag re-alert
+  carries the same reminder-and-time key as the first alert, so every
+  re-alert after the first was swallowed as a "duplicate". The guard now
+  expires entries by timestamp instead, with unit tests pinning it down.
+- Reminders whose time passed while the phone was off never fired and
+  silently stopped repeating: the alarm never went off, so nothing
+  advanced the reminder to its next occurrence or re-armed it. After a
+  reboot they're now delivered late (staggered so several don't talk
+  over each other), which also rolls repeating reminders forward.
+- A location reminder created or removed on the web dashboard now takes
+  effect on the phone at the next sync instead of the next reboot.
+- The alert service could crash the app on some phones when an alert
+  arrived already-handled (deleted, quiet hours, nag timeout): Android
+  requires every started alert to present itself promptly, including
+  the ones that decide not to sound.
+- The update dot no longer checks GitHub on every app open unless the
+  opt-in automatic update check is switched on, matching what Settings
+  promises about when the app phones out. Update downloads are also now
+  refused unless they come from GitHub over HTTPS.
+- An edit made on the phone in the moments right after a sync could
+  stay stuck on the phone if its clock ran behind the server's; syncs
+  now overlap a safety margin so nothing falls between the cracks.
+- Removed a future data-loss landmine: a database schema change without
+  a written migration now fails loudly at startup instead of silently
+  wiping every reminder (the schema history is exported for writing
+  real migrations), and Room's destructive fallback is gone.
+- Saving a location reminder without picking a place is no longer
+  possible (it could never have fired).
+- Housekeeping: dead code from the removed ringing feature and unused
+  icons, strings, imports, and test/build dependencies are gone; the
+  Android 12+ approximate-location permission accompanies the precise
+  one, so lint runs clean.

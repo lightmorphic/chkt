@@ -31,14 +31,15 @@ abstract class ChktDatabase : RoomDatabase() {
 
         fun get(context: Context): ChktDatabase =
             instance ?: synchronized(this) {
+                // No destructive-migration fallback: shipped installs exist,
+                // so any schema bump MUST come with a Migration (schemas are
+                // exported to app/schemas for writing them). A missing one
+                // fails loudly instead of silently wiping every reminder.
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     ChktDatabase::class.java,
                     "chkt.db",
                 )
-                    // Pre-release only: no shipped installs exist, so schema
-                    // changes rebuild the database instead of migrating.
-                    .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }
     }

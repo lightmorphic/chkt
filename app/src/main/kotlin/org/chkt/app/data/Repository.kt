@@ -123,7 +123,22 @@ class Repository(
 
     /** Re-arm every alarm; called after boot, app update, or time changes. */
     suspend fun rescheduleAll() {
-        db.reminders().allSchedulable().forEach { scheduler.schedule(it) }
+        val now = System.currentTimeMillis()
+        var lateFires = 0
+        db.reminders().allSchedulable().forEach { reminder ->
+            val fireAt = reminder.snoozedUntil ?: reminder.dueAt
+            if (fireAt != null && fireAt <= now) {
+                // The alarm time passed while the phone was off, so it never
+                // fired and nothing advanced dueAt or re-armed the next
+                // occurrence — without this the reminder would silently die.
+                // Deliver it late, staggered so several catch-ups don't talk
+                // over each other.
+                scheduler.scheduleAt(reminder, now + 5_000L + lateFires * 20_000L)
+                lateFires += 1
+            } else {
+                scheduler.schedule(reminder)
+            }
+        }
         LocationReminders.registerAll(context)
     }
 }

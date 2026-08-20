@@ -10,7 +10,6 @@
     <string name="notif_channel_service">Alert playback</string>
     <string name="action_done">Done</string>
     <string name="action_snooze">Snooze</string>
-    <string name="tts_missing_title">No speech engine installed</string>
     <string name="tts_missing_body">CHKT speaks reminders through your phone\'s text-to-speech engine. Install Sherpa TTS (free, on F-Droid) or any other speech engine to hear reminders read aloud.</string>
     <string name="tts_get_sherpa">Get Sherpa TTS</string>
 </resources>

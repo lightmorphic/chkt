@@ -11,6 +11,7 @@ import org.chkt.app.data.LocationTrigger
 import org.chkt.app.data.LogAction
 import org.chkt.app.data.Reminder
 import org.chkt.app.data.Repository
+import org.chkt.app.location.LocationReminders
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -57,13 +58,19 @@ class SyncClient(private val context: Context) {
 
         try {
             val since = config.lastSyncAt
+            // The watermark is the SERVER's clock but updatedAt is stamped
+            // with this phone's; if the phone runs behind, an edit made just
+            // after a sync could fall below the watermark and never upload.
+            // Querying with a margin closes that window — re-sending an
+            // already-synced record is harmless (newest-wins on both ends).
+            val uploadSince = (since - CLOCK_SKEW_MARGIN_MS).coerceAtLeast(0)
             val body = JSONObject().apply {
                 put("since", since)
                 put("reminders", JSONArray().apply {
-                    repo.db.reminders().changedSince(since).forEach { put(reminderToJson(it)) }
+                    repo.db.reminders().changedSince(uploadSince).forEach { put(reminderToJson(it)) }
                 })
                 put("logs", JSONArray().apply {
-                    repo.db.logs().changedSince(since).forEach { put(logToJson(it)) }
+                    repo.db.logs().changedSince(uploadSince).forEach { put(logToJson(it)) }
                 })
             }
 
@@ -138,6 +145,14 @@ class SyncClient(private val context: Context) {
         val scheduler = AlarmScheduler(context)
         if (toStore.deletedAt != null || !toStore.enabled) scheduler.cancel(toStore.id)
         else scheduler.schedule(toStore)
+        // Same for proximity alerts: a location reminder created or cleared
+        // on the web side must (un)register here too, not wait for the next
+        // reboot's rescheduleAll.
+        if (toStore.deletedAt != null || toStore.locationTrigger == LocationTrigger.NONE) {
+            LocationReminders.unregister(context, toStore.id)
+        } else {
+            LocationReminders.registerAll(context)
+        }
         return true
     }
 
@@ -178,5 +193,9 @@ class SyncClient(private val context: Context) {
         conn.setRequestProperty("Content-Type", "application/json")
         if (method == "POST") conn.doOutput = true
         return conn
+    }
+
+    private companion object {
+        const val CLOCK_SKEW_MARGIN_MS = 5 * 60_000L
     }
 }

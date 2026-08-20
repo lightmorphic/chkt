@@ -22,7 +22,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -99,7 +98,12 @@ fun HomeScreen(
                 onClick = { onEdit(null) },
                 containerColor = MaterialTheme.colorScheme.primary,
             ) {
-                IconButton24(ChktIcon.Add, "Add reminder", MaterialTheme.colorScheme.onPrimary) { onEdit(null) }
+                // The FAB is the click target; a nested IconButton24 would
+                // add a second one inside it (double talkback focus).
+                Icon24(
+                    ChktIcon.Add, "Add reminder", MaterialTheme.colorScheme.onPrimary,
+                    Modifier.size(40.dp).padding(8.dp),
+                )
             }
         },
     ) { padding ->

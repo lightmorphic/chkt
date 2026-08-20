@@ -15,9 +15,8 @@ android {
         targetSdk = 34
         // Bump BOTH for every build that leaves this machine, including test
         // builds: same-version sideloads can silently keep the old install.
-        versionCode = 21
-        versionName = "1.0.15"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionCode = 22
+        versionName = "1.0.16"
     }
 
     buildTypes {
@@ -42,11 +41,6 @@ android {
         compose = true
         buildConfig = true
     }
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-        }
-    }
     // Reproducible builds for F-Droid: no proprietary deps, no play services.
     dependenciesInfo {
         includeInApk = false
@@ -54,15 +48,18 @@ android {
     }
 }
 
+// Room schema history, committed so future schema bumps can write real
+// migrations against what shipped (the destructive fallback is gone).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.runtime)
@@ -73,6 +70,4 @@ dependencies {
     implementation(libs.androidx.documentfile)
 
     testImplementation(libs.junit)
-    testImplementation(libs.robolectric)
-    testImplementation(libs.androidx.test.core)
 }

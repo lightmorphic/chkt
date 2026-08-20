@@ -36,7 +36,7 @@ fun ChktLogo(modifier: Modifier = Modifier) {
  * Purpose-drawn stroke icons (no emoji, no icon-font glyphs). Each is drawn
  * on a 24×24 grid and scales with the size modifier.
  */
-enum class ChktIcon { Edit, Delete, Tick, Add, Back, Settings, Stats, Bell, Speaker, Clock, Pin }
+enum class ChktIcon { Delete, Tick, Add, Back, Settings, Stats, Bell }
 
 @Composable
 fun IconButton24(
@@ -46,21 +46,25 @@ fun IconButton24(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    Icon24(icon, label, tint, modifier.size(40.dp).clickable(onClick = onClick).padding(8.dp))
+}
+
+/** The bare 24dp glyph, for hosts that provide their own click target
+ * (nesting another clickable inside would double the focus/touch target). */
+@Composable
+fun Icon24(
+    icon: ChktIcon,
+    label: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
     Canvas(
-        modifier = modifier
-            .size(40.dp)
-            .clickable(onClick = onClick)
-            .padding(8.dp)
-            .semantics { contentDescription = label },
+        modifier = modifier.semantics { contentDescription = label },
     ) {
         val s = size.minDimension / 24f
         fun p(build: Path.() -> Unit) = Path().apply(build)
         val stroke = Stroke(width = 2f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
         val paths: List<Path> = when (icon) {
-            ChktIcon.Edit -> listOf(p {
-                moveTo(4f * s, 20f * s); lineTo(8f * s, 19f * s); lineTo(19f * s, 8f * s)
-                lineTo(16f * s, 5f * s); lineTo(5f * s, 16f * s); close()
-            })
             ChktIcon.Delete -> listOf(
                 p { moveTo(5f * s, 7f * s); lineTo(19f * s, 7f * s) },
                 p { moveTo(9f * s, 7f * s); lineTo(9f * s, 4f * s); lineTo(15f * s, 4f * s); lineTo(15f * s, 7f * s) },
@@ -94,26 +98,6 @@ fun IconButton24(
                     lineTo(7.5f * s, 14f * s); close()
                 },
                 p { moveTo(10.5f * s, 19.5f * s); lineTo(13.5f * s, 19.5f * s) },
-            )
-            ChktIcon.Speaker -> listOf(
-                p {
-                    moveTo(5f * s, 10f * s); lineTo(8f * s, 10f * s); lineTo(13f * s, 6f * s)
-                    lineTo(13f * s, 18f * s); lineTo(8f * s, 14f * s); lineTo(5f * s, 14f * s); close()
-                },
-                p { moveTo(16f * s, 9f * s); quadraticBezierTo(19f * s, 12f * s, 16f * s, 15f * s) },
-            )
-            ChktIcon.Clock -> listOf(
-                p { addOval(androidx.compose.ui.geometry.Rect(4f * s, 4f * s, 20f * s, 20f * s)) },
-                p { moveTo(12f * s, 8f * s); lineTo(12f * s, 12f * s); lineTo(15f * s, 14f * s) },
-            )
-            ChktIcon.Pin -> listOf(
-                p {
-                    moveTo(12f * s, 21f * s)
-                    quadraticBezierTo(5f * s, 13f * s, 5f * s, 9.5f * s)
-                    arcTo(androidx.compose.ui.geometry.Rect(5f * s, 3f * s, 19f * s, 16f * s), 180f, -180f, false)
-                    quadraticBezierTo(19f * s, 13f * s, 12f * s, 21f * s); close()
-                },
-                p { addOval(androidx.compose.ui.geometry.Rect(10f * s, 7.5f * s, 14f * s, 11.5f * s)) },
             )
         }
         paths.forEach { drawPath(it, tint, style = stroke) }

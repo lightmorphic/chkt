@@ -39,14 +39,24 @@ class AlertService : Service() {
             ACTION_DONE -> { handleDone(intent); return START_NOT_STICKY }
             ACTION_SNOOZE -> { handleSnooze(intent); return START_NOT_STICKY }
             ACTION_DISMISSED -> { handleDismissed(intent); return START_NOT_STICKY }
-            ACTION_STOP_AUDIO -> { stopAudio(); return START_NOT_STICKY }
         }
 
         val id = intent?.getStringExtra(AlarmScheduler.EXTRA_REMINDER_ID)
         if (id == null) { stopSelf(); return START_NOT_STICKY }
 
-        // Hold the CPU awake long enough to get audio going on a dozing phone.
+        // We were started with startForegroundService, so startForeground
+        // must happen promptly on EVERY path — including the ones that
+        // decide not to alert — or Android kills the app with a
+        // ForegroundServiceDidNotStartInTime crash. This placeholder is
+        // low-importance and silent; the real alert notification replaces
+        // or follows it.
+        startForeground(SERVICE_NOTIF_ID, placeholderNotification())
+
+        // Hold the CPU awake long enough to get audio going on a dozing
+        // phone. Release any lock a concurrent start left behind first, or
+        // it would leak until its timeout.
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock?.takeIf { it.isHeld }?.release()
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "chkt:alert").apply {
             acquire(120_000L)
         }
@@ -55,22 +65,12 @@ class AlertService : Service() {
             val repo = Repository(applicationContext)
             val reminder = repo.db.reminders().byId(id)
             if (reminder == null || reminder.deletedAt != null || !reminder.enabled) {
-                stopSelf(); return@launch
+                stopQuietly(); return@launch
             }
             val firedDueAt = reminder.snoozedUntil ?: reminder.dueAt ?: System.currentTimeMillis()
 
-            // Neither AlarmReceiver nor the OS guarantees exactly-once
-            // delivery (a redelivered broadcast, or a race with the
-            // location-triggered path for the same reminder, are both
-            // possible) — without this, a duplicate delivery would not just
-            // double the alert sound but double-advance a repeat rule via
-            // onFired() below.
-            val fireKey = "$id:$firedDueAt"
-            val isDuplicate = synchronized(recentlyFired) { !recentlyFired.add(fireKey) }
-            if (isDuplicate) { stopSelf(); return@launch }
-            scope.launch {
-                delay(10_000)
-                synchronized(recentlyFired) { recentlyFired.remove(fireKey) }
+            if (deduper.isDuplicate("$id:$firedDueAt", System.currentTimeMillis())) {
+                stopQuietly(); return@launch
             }
 
             val quiet = repo.settings.quietHoursNow().contains(LocalTime.now())
@@ -78,11 +78,11 @@ class AlertService : Service() {
             // Handles nag re-alerts and arms whatever alarm comes next, so a
             // crash or force-stop can never lose the schedule.
             val shouldAlert = repo.onFired(reminder)
-            if (!shouldAlert) { stopSelf(); return@launch }
+            if (!shouldAlert) { stopQuietly(); return@launch }
 
             if (quiet || reminder.alertMode == AlertMode.NOTIFY_ONLY) {
                 postNotification(reminder, firedDueAt, fullScreen = false, silentChannel = quiet)
-                stopSelf()
+                stopQuietly()
                 return@launch
             }
 
@@ -90,6 +90,7 @@ class AlertService : Service() {
             // just talks, no full-screen popup or persistent banner.
             val fullScreen = reminder.alertMode == AlertMode.NOTIFY_AND_SPEAK
             startForeground(NOTIF_ID, buildNotification(reminder, firedDueAt, fullScreen = fullScreen, silentChannel = false))
+            cancelPlaceholder()
             if (reminder.vibrate) vibrate()
             speakText(reminder)
         }
@@ -126,6 +127,24 @@ class AlertService : Service() {
             stopSelf()
         }
     }
+
+    /** Leave foreground without keeping any placeholder notification, for
+     * the paths that end without a (sounding) alert of their own. */
+    private fun stopQuietly() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    private fun cancelPlaceholder() {
+        androidx.core.app.NotificationManagerCompat.from(this).cancel(SERVICE_NOTIF_ID)
+    }
+
+    private fun placeholderNotification(): Notification =
+        NotificationCompat.Builder(this, Notifications.CHANNEL_SERVICE)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(getString(R.string.notif_channel_service))
+            .setSilent(true)
+            .build()
 
     private fun stopAudio() {
         speaker?.shutdown(); speaker = null
@@ -237,15 +256,17 @@ class AlertService : Service() {
 
     companion object {
         const val NOTIF_ID = 100
+        /** The startForeground placeholder, distinct from NOTIF_ID so the
+         * real alert notification starts fresh on its own channel. */
+        const val SERVICE_NOTIF_ID = 101
         const val ACTION_DONE = "org.chkt.app.DONE"
         const val ACTION_SNOOZE = "org.chkt.app.SNOOZE"
         const val ACTION_DISMISSED = "org.chkt.app.DISMISSED"
-        const val ACTION_STOP_AUDIO = "org.chkt.app.STOP_AUDIO"
         const val EXTRA_DUE_AT = "due_at"
         const val EXTRA_SNOOZE_MINUTES = "snooze_minutes"
 
-        /** "reminderId:dueAt" keys seen in the last few seconds — guards
-         * against duplicate delivery (see onStartCommand). */
-        private val recentlyFired = mutableSetOf<String>()
+        /** Shared across service instances: duplicate deliveries arrive as
+         * separate start commands, often to a fresh instance. */
+        private val deduper = FireDeduper()
     }
 }

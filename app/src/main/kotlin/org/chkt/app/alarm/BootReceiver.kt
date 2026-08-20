@@ -14,6 +14,10 @@ import org.chkt.app.data.Repository
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // Exported (the system needs to reach it), so ignore anything except
+        // the actions we registered for — not explicit invocations by other
+        // apps.
+        if (intent.action !in HANDLED_ACTIONS) return
         val result = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -22,5 +26,14 @@ class BootReceiver : BroadcastReceiver() {
                 result.finish()
             }
         }
+    }
+
+    private companion object {
+        val HANDLED_ACTIONS = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+        )
     }
 }

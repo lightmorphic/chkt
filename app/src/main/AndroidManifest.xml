@@ -35,7 +35,10 @@
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Voice widget records locally; audio never leaves the device. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Location reminders (optional feature, runtime-requested). -->
+    <!-- Location reminders (optional feature, runtime-requested). COARSE
+         must accompany FINE on Android 12+, where the user may choose to
+         grant only approximate location. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- Sync is optional and off by default; the app works fully without network. -->
@@ -79,10 +82,12 @@
             android:turnScreenOn="true"
             android:theme="@style/Theme.Chkt" />
 
+        <!-- Launched only by our own widget's PendingIntent, which doesn't
+             need the activity exported. -->
         <activity
             android:name=".widget.RecordActivity"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:launchMode="singleInstance"
             android:theme="@style/Theme.Chkt.Translucent" />
 

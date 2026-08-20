@@ -24,7 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.chkt.app.data.AppSettings
 import org.chkt.app.update.Updater
 import java.io.File
 
@@ -76,9 +78,13 @@ fun UpdateStatusDot() {
         }
     }
 
-    // Silent check on open: no pulse, so the dot doesn't animate on every
-    // launch — pulsing is reserved for a check the user actually asked for.
-    LaunchedEffect(Unit) { check() }
+    // A check on open only when the user opted into automatic checking —
+    // Settings promises "checking only happens when you ask (or daily, if
+    // you switch that on)", and this must keep that promise. Manual checks
+    // are always a tap away (the green dot).
+    LaunchedEffect(Unit) {
+        if (AppSettings(context).autoUpdateCheck.first()) check()
+    }
 
     val description: String
     val onClick: (() -> Unit)?

@@ -110,6 +110,13 @@ object Updater {
         onProgress: (Float) -> Unit = {},
     ): DownloadResult = withContext(Dispatchers.IO) {
         val url = info.apkUrl ?: return@withContext DownloadResult.Failed("That release has no APK attached.")
+        // Only ever install what GitHub itself serves, over HTTPS. The URL
+        // comes from release JSON, so don't trust it blindly.
+        val host = runCatching { java.net.URI(url) }.getOrNull()
+            ?.takeIf { it.scheme == "https" }?.host
+        if (host != "github.com" && host?.endsWith(".githubusercontent.com") != true) {
+            return@withContext DownloadResult.Failed("Refusing a download URL that isn't GitHub over HTTPS.")
+        }
         try {
             val dir = File(context.cacheDir, "updates").apply { mkdirs() }
             val apk = File(dir, "chkt-${info.version}.apk")
@@ -186,9 +193,11 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
     override suspend fun doWork(): Result {
         val result = Updater.check(applicationContext)
         if (result is Updater.CheckResult.UpdateAvailable) {
+            val launch = applicationContext.packageManager
+                .getLaunchIntentForPackage(applicationContext.packageName)
+                ?: return Result.success()
             val open = PendingIntent.getActivity(
-                applicationContext, 9001,
-                applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName),
+                applicationContext, 9001, launch,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             val notification = NotificationCompat.Builder(applicationContext, Notifications.CHANNEL_SILENT)

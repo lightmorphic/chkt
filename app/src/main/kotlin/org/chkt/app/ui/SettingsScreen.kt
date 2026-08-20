@@ -319,7 +319,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }) { Text(if (testing) "Testing…" else "Test connection") }
                     if (testing) {
                         Spacer(Modifier.width(12.dp))
-                        androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     }
                 }
                 // Right under the button, not buried at the bottom of the
