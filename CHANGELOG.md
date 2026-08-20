@@ -123,3 +123,11 @@ First release.
   or location reminder you switch off moves there too, instead of sitting
   greyed-out at the bottom of the main list. Reuse works the same way —
   open it, give it a date, and it's back.
+- Sync settings: the Test connection result now appears on one status
+  line just under the Sync switch — the same place that shows "Active,
+  last synced …" — instead of below the button at the bottom of the
+  card, where the keyboard pushed it off the screen and a test looked
+  like it had done nothing. A successful test also switches sync on by
+  itself (and says so), rather than leaving one more tap between a
+  proven connection and sync actually running. Editing the address or
+  key clears a stale result.

@@ -106,6 +106,13 @@ class AppSettings(private val context: Context) {
         it[Keys.syncLast] = config.lastSyncAt
     }
 
+    /** Switch sync on or off on its own, leaving the server address, key
+     *  and last-sync time alone — a sync running right now may be
+     *  updating those. */
+    suspend fun setSyncEnabled(enabled: Boolean) = context.store.edit {
+        it[Keys.syncEnabled] = enabled
+    }
+
     suspend fun setLastSync(at: Long) = context.store.edit { it[Keys.syncLast] = at }
 
 }

@@ -272,6 +272,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
                 var server by remember(sync.serverUrl) { mutableStateOf(sync.serverUrl) }
                 var key by remember { mutableStateOf("") }
+                var testing by remember { mutableStateOf(false) }
+                var testResult by remember { mutableStateOf<SyncClient.ConnectionTest?>(null) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = sync.enabled, onCheckedChange = { enabled ->
                         scope.launch {
@@ -282,60 +284,74 @@ fun SettingsScreen(onBack: () -> Unit) {
                     })
                     Text("  Sync on")
                 }
-                if (sync.enabled) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
-                        IconButton24(ChktIcon.Tick, "Active", Color(0xFF2E8B6F)) {}
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            if (sync.lastSyncAt == 0L) "Active, hasn't synced yet"
-                            else "Active, last synced " + relativeTime(sync.lastSyncAt),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF2E8B6F),
-                        )
-                    }
+                // One status line, directly under the switch where the eye
+                // already is: whatever just happened (a test) if there is
+                // one, otherwise whether sync is running. A test result
+                // used to appear under the button at the bottom of the
+                // card, off the bottom of the screen with the keyboard up,
+                // so testing looked like it did nothing at all.
+                val green = Color(0xFF2E8B6F)
+                val lastTest = testResult
+                when {
+                    testing -> SyncStatusLine(
+                        "Testing the connection…",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        tick = false,
+                    )
+                    lastTest != null -> SyncStatusLine(
+                        lastTest.message,
+                        if (lastTest.ok) green else MaterialTheme.colorScheme.error,
+                        tick = lastTest.ok,
+                    )
+                    sync.enabled -> SyncStatusLine(
+                        if (sync.lastSyncAt == 0L) "Active, hasn't synced yet"
+                        else "Active, last synced " + relativeTime(sync.lastSyncAt),
+                        green,
+                        tick = true,
+                    )
                 }
                 OutlinedTextField(
-                    value = server, onValueChange = { server = it },
+                    // Editing either field makes the last test result stale,
+                    // so drop it rather than leave a tick against details
+                    // that have since changed.
+                    value = server, onValueChange = { server = it; testResult = null },
                     label = { Text("Server address (https://…)") },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
-                    value = key, onValueChange = { key = it },
+                    value = key, onValueChange = { key = it; testResult = null },
                     label = { Text(if (sync.accessKey.isBlank()) "Access key" else "Access key (saved, leave blank to keep)") },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                var testing by remember { mutableStateOf(false) }
-                var testResult by remember { mutableStateOf<org.chkt.app.sync.SyncClient.ConnectionTest?>(null) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !testing, onClick = {
                         testing = true
                         testResult = null
                         scope.launch {
                             val effectiveKey = if (key.isNotBlank()) key else sync.accessKey
+                            // Save what was typed first, so a failed test
+                            // doesn't throw the details away.
                             repo.settings.setSync(sync.copy(serverUrl = server, accessKey = effectiveKey))
-                            testResult = SyncClient(context).testConnection(server, effectiveKey)
+                            val result = SyncClient(context).testConnection(server, effectiveKey)
+                            // A working connection is the moment the details
+                            // are proven right, so switch sync on there and
+                            // then instead of leaving one more easily-missed
+                            // tap between here and sync actually running.
+                            // Say so too, since the switch moves by itself.
+                            val turnedOn = result.ok && !sync.enabled
+                            if (turnedOn) {
+                                repo.settings.setSyncEnabled(true)
+                                org.chkt.app.sync.SyncScheduler.ensureScheduled(context)
+                            }
+                            testResult =
+                                if (turnedOn) result.copy(message = result.message + " Sync is on.")
+                                else result
                             testing = false
                         }
                     }) { Text(if (testing) "Testing…" else "Test connection") }
                     if (testing) {
                         Spacer(Modifier.width(12.dp))
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    }
-                }
-                // Right under the button, not buried at the bottom of the
-                // whole Settings screen, so it can't be mistaken for nothing
-                // having happened.
-                testResult?.let { result ->
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                        if (result.ok) {
-                            IconButton24(ChktIcon.Tick, "Connected", Color(0xFF2E8B6F)) {}
-                            Spacer(Modifier.width(4.dp))
-                        }
-                        Text(
-                            result.message,
-                            color = if (result.ok) Color(0xFF2E8B6F) else MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
                     }
                 }
             }
@@ -425,6 +441,23 @@ private fun MinuteField(label: String, minutes: Int, onChange: (Int) -> Unit) {
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth(0.45f),
     )
+}
+
+/** The single line of sync state under the Sync switch: what the last
+ *  test said, or whether sync is running. */
+@Composable
+private fun SyncStatusLine(text: String, color: Color, tick: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(bottom = 4.dp),
+    ) {
+        if (tick) {
+            // Decoration only — the text beside it is the message.
+            Icon24(ChktIcon.Tick, "", color, Modifier.size(24.dp).padding(2.dp))
+            Spacer(Modifier.width(4.dp))
+        }
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
+    }
 }
 
 private fun relativeTime(epochMillis: Long): String {
