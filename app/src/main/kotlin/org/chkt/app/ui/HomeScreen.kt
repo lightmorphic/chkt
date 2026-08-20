@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.chkt.app.data.Reminder
+import org.chkt.app.domain.isSpentOneOff
 import org.chkt.app.domain.nextAlertMillis
 
 /**
@@ -50,13 +51,16 @@ fun HomeScreen(
     onEdit: (String?) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenHistory: () -> Unit,
 ) {
     val repo = LocalRepository.current
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val unordered by repo.db.reminders().observeAll().collectAsState(initial = emptyList())
     val reminders = remember(unordered) {
-        unordered.sortedWith(
+        // Spent one-offs live on the History screen, not here — the main
+        // list is what's coming up, not what already happened.
+        unordered.filterNot { it.isSpentOneOff() }.sortedWith(
             compareByDescending<Reminder> { it.enabled }
                 .thenBy { it.nextAlertMillis() == null }
                 .thenBy { it.nextAlertMillis() ?: Long.MAX_VALUE }
@@ -88,6 +92,7 @@ fun HomeScreen(
                     )
                     UpdateStatusDot()
                     Spacer(Modifier.width(8.dp))
+                    IconButton24(ChktIcon.History, "History", tint, onClick = onOpenHistory)
                     IconButton24(ChktIcon.Stats, "Statistics", tint, onClick = onOpenStats)
                     IconButton24(ChktIcon.Settings, "Settings", tint, onClick = onOpenSettings)
                 },

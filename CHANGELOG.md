@@ -108,3 +108,12 @@ First release.
   icons, strings, imports, and test/build dependencies are gone; the
   Android 12+ approximate-location permission accompanies the precise
   one, so lint runs clean.
+
+### Added (1.0.17)
+- History: one-time reminders leave the main list once they're done and
+  live under the new clock button in the top bar (between the update dot
+  and Statistics). Look back over them, or tap one to give it a new date
+  and bring it back — opening a finished reminder from History switches
+  it back on and rolls a stale date forward to today, so "pick a date,
+  Save" is the whole gesture. Matching History page on CHKT Server
+  (1.1.14).

@@ -46,6 +46,7 @@ import org.chkt.app.data.AlertMode
 import org.chkt.app.data.LocationTrigger
 import org.chkt.app.data.Reminder
 import org.chkt.app.domain.RepeatRule
+import org.chkt.app.domain.isSpentOneOff
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -108,6 +109,14 @@ fun EditReminderScreen(
                 tags = r.tags
                 locationTrigger = r.locationTrigger
                 latitude = r.latitude; longitude = r.longitude; radius = r.radiusMetres
+                // Reusing from History: pre-arm it so "pick a date, Save"
+                // is the whole gesture — switch it back on and roll a past
+                // date forward to today (same time of day). The Active
+                // switch shows the change; backing out saves nothing.
+                if (r.isSpentOneOff()) {
+                    active = true
+                    if (date?.isBefore(LocalDate.now()) == true) date = LocalDate.now()
+                }
             }
             loaded = true
         }

@@ -36,6 +36,13 @@ fun ChktApp() {
                     },
                     onOpenSettings = { navController.navigate("settings") },
                     onOpenStats = { navController.navigate("stats") },
+                    onOpenHistory = { navController.navigate("history") },
+                )
+            }
+            composable("history") {
+                HistoryScreen(
+                    onReuse = { reminderId -> navController.navigate("edit?reminderId=$reminderId") },
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable("new") {

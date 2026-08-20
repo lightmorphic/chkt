@@ -36,7 +36,7 @@ fun ChktLogo(modifier: Modifier = Modifier) {
  * Purpose-drawn stroke icons (no emoji, no icon-font glyphs). Each is drawn
  * on a 24×24 grid and scales with the size modifier.
  */
-enum class ChktIcon { Delete, Tick, Add, Back, Settings, Stats, Bell }
+enum class ChktIcon { Delete, Tick, Add, Back, Settings, Stats, Bell, History }
 
 @Composable
 fun IconButton24(
@@ -98,6 +98,12 @@ fun Icon24(
                     lineTo(7.5f * s, 14f * s); close()
                 },
                 p { moveTo(10.5f * s, 19.5f * s); lineTo(13.5f * s, 19.5f * s) },
+            )
+            // A clock face: history is where reminders whose time has
+            // passed live.
+            ChktIcon.History -> listOf(
+                p { addOval(androidx.compose.ui.geometry.Rect(4f * s, 4f * s, 20f * s, 20f * s)) },
+                p { moveTo(12f * s, 8f * s); lineTo(12f * s, 12f * s); lineTo(15f * s, 14f * s) },
             )
         }
         paths.forEach { drawPath(it, tint, style = stroke) }

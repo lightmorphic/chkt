@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "chkt-server",
-      "runtimeExecutable": "/home/charlie/GitHub/chkt-server/.venv/bin/python",
-      "runtimeArgs": ["/home/charlie/GitHub/chkt-server/run.py"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /home/charlie/Claude_Repos/chkt-server && CHKT_INSECURE_COOKIES=1 exec .venv/bin/python run.py"],
       "port": 8321
     }
   ]
