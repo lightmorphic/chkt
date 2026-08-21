@@ -23,8 +23,14 @@ object SyncScheduler {
     fun ensureScheduled(context: Context) {
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.HOURS)
+            // UPDATE, not KEEP: installs from when this ran hourly keep the
+            // old interval forever under KEEP — the policy change would
+            // never reach them.
+            ExistingPeriodicWorkPolicy.UPDATE,
+            // 15 minutes is Android's floor for periodic work. A reminder
+            // created on the calendar or web can't sit unseen for an hour
+            // any more; opening the app narrows the gap to seconds.
+            PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
                 .setConstraints(
                     Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
                 )

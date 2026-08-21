@@ -246,3 +246,13 @@ codebase, every finding verified and fixed or consciously accepted.
 ### Changed
 - Tapping the version number now opens chkt.org, the project's site,
   instead of the GitHub repository. Update checks still use GitHub.
+
+## [1.0.27]
+
+### Changed
+- Sync catches up much faster. The background pass runs every 15 minutes
+  (Android's floor) instead of hourly, and opening the app syncs
+  immediately — so a reminder created on your calendar or the web appears
+  within seconds of picking the phone up, not up to an hour later.
+  Existing installs pick the new schedule up on first open. Truly instant
+  push without Google services would need UnifiedPush; on the list.
