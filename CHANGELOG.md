@@ -149,3 +149,12 @@ First release.
   change a channel sound are gone from Android's notification settings;
   the sound is still picked in CHKT's own Settings and applies from the
   next alert.
+
+### Added (unreleased)
+- Reminders have a length, so they can be published to a calendar as a
+  block rather than a moment. It defaults to nothing — a plain reminder
+  is still a point in time — and never changes how or when the alert
+  happens. Set it under "How long it takes" when a reminder has a date.
+  Pairs with CalDAV on CHKT Server, where your reminders become a
+  calendar you can subscribe to from any calendar app on any device, and
+  anything you add to that calendar comes back as a reminder.

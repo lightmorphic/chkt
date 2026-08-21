@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 class Converters {
     @TypeConverter fun alertModeToString(v: AlertMode): String = v.name
@@ -18,7 +20,7 @@ class Converters {
 
 @Database(
     entities = [Reminder::class, CompletionLog::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -27,6 +29,14 @@ abstract class ChktDatabase : RoomDatabase() {
     abstract fun logs(): LogDao
 
     companion object {
+        /** Reminders gained a length, for showing them on a calendar. Every
+         * existing reminder is a point in time, which is what 0 means. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminders ADD COLUMN durationMinutes INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile private var instance: ChktDatabase? = null
 
         fun get(context: Context): ChktDatabase =
@@ -40,6 +50,7 @@ abstract class ChktDatabase : RoomDatabase() {
                     ChktDatabase::class.java,
                     "chkt.db",
                 )
+                    .addMigrations(MIGRATION_3_4)
                     .build().also { instance = it }
             }
     }

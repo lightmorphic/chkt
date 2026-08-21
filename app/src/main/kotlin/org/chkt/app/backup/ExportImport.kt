@@ -33,6 +33,7 @@ object ExportImport {
                     put("id", r.id); put("tags", r.tags)
                     put("title", r.title); put("notes", r.notes)
                     put("dueAt", r.dueAt ?: JSONObject.NULL)
+                    put("durationMinutes", r.durationMinutes)
                     put("repeatRule", r.repeatRule)
                     put("alertMode", r.alertMode.name)
                     put("preTone", r.preTone)
@@ -97,6 +98,7 @@ object ExportImport {
                 title = o.getString("title"),
                 notes = o.optString("notes", ""),
                 dueAt = if (o.isNull("dueAt")) null else o.getLong("dueAt"),
+                durationMinutes = o.optInt("durationMinutes", 0),
                 repeatRule = o.optString("repeatRule", ""),
                 alertMode = AlertMode.fromStored(o.optString("alertMode")),
                 preTone = o.optBoolean("preTone", false),

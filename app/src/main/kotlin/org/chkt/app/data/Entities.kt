@@ -37,6 +37,10 @@ data class Reminder(
     val notes: String = "",
     /** Next time this reminder should fire, epoch millis. Null for location-only reminders. */
     val dueAt: Long?,
+    /** How long the thing itself takes, in minutes. 0 — the default — is a
+     * point in time. It changes nothing about the alert; it exists so a
+     * reminder published to a calendar has a sensible length there. */
+    val durationMinutes: Int = 0,
     /** Repeat rule string, see [org.chkt.app.domain.RepeatRule]. Empty = one-off. */
     val repeatRule: String = "",
     val alertMode: AlertMode = AlertMode.NOTIFY_AND_SPEAK,
