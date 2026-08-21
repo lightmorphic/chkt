@@ -158,3 +158,14 @@ First release.
   Pairs with CalDAV on CHKT Server, where your reminders become a
   calendar you can subscribe to from any calendar app on any device, and
   anything you add to that calendar comes back as a reminder.
+
+### Changed (1.0.21)
+- Tags are lowercase. "Cal" and "cal" were two tags that looked identical
+  in a list and behaved differently everywhere else; now there's only one
+  of them, decided in the one place every save passes through — the edit
+  screen, the voice widget and an import alike. Matches CHKT Server 1.1.20,
+  so a reminder edited on either side comes out looking the same.
+- The tag box suggests the tags you already have and turns each pick into a
+  chip you can tap to remove. A word that isn't a tag yet takes a
+  deliberate "add as a new tag" button, so a typo can't quietly become a
+  tag that sits in the list forever looking almost right.

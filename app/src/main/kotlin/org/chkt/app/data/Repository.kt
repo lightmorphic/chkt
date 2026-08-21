@@ -20,7 +20,10 @@ class Repository(
     private val scheduler = AlarmScheduler(context)
 
     suspend fun saveReminder(reminder: Reminder) {
-        val stamped = reminder.copy(updatedAt = System.currentTimeMillis())
+        val stamped = reminder.copy(
+            updatedAt = System.currentTimeMillis(),
+            tags = org.chkt.app.ui.normalizeTags(reminder.tags),
+        )
         db.reminders().upsert(stamped)
         scheduler.schedule(stamped)
         if (stamped.locationTrigger != LocationTrigger.NONE) {

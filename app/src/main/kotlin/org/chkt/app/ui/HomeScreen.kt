@@ -183,6 +183,13 @@ private fun ActiveCircle(active: Boolean, onToggle: () -> Unit) {
 fun Reminder.tagList(): List<String> =
     tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
 
+/** Tags are lowercase, trimmed and unique, in the order given. Case was only
+ * ever a way to end up with "Cal" and "cal": two tags that look the same in a
+ * list and behave differently everywhere else. */
+fun normalizeTags(raw: String): String =
+    raw.split(",").map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        .distinct().joinToString(", ")
+
 private val dueFormat = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM, HH:mm")
 
 fun describeWhen(reminder: Reminder): String {

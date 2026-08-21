@@ -4,6 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.LocationManager
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +19,8 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -37,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
@@ -184,26 +192,7 @@ fun EditReminderScreen(
             )
 
             SectionLabel("Tags")
-            OutlinedTextField(
-                value = tags, onValueChange = { tags = it },
-                label = { Text("Tags, separated by commas (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (knownTags.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    knownTags.take(6).forEach { tag ->
-                        val present = tag in tags.split(",").map { it.trim() }
-                        FilterChip(
-                            selected = present,
-                            onClick = {
-                                val current = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                                tags = (if (present) current - tag else current + tag).joinToString(", ")
-                            },
-                            label = { Text(tag) },
-                        )
-                    }
-                }
-            }
+            TagField(tags = tags, known = knownTags) { tags = it }
 
             SectionLabel("When")
             DateTimeRow(
@@ -470,6 +459,70 @@ private fun EveryPicker(rule: RepeatRule, onChange: (RepeatRule) -> Unit) {
             listOf("m" to "min", "h" to "hrs", "d" to "days", "w" to "wks", "y" to "yrs").forEach { (code, label) ->
                 FilterChip(selected = unit == code, onClick = { unit = code; push() }, label = { Text(label) })
             }
+        }
+    }
+}
+
+/**
+ * Tags you already have, one tap each. A word that isn't a tag yet takes a
+ * deliberate second tap — that is what stops "grocries" quietly becoming a
+ * tag of its own, sitting in the list forever looking almost right.
+ *
+ * Everything is lowercased on the way in, here and on the server, so "Cal"
+ * and "cal" can't both exist and mean the same thing.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagField(tags: String, known: List<String>, onChange: (String) -> Unit) {
+    val chosen = remember(tags) {
+        tags.split(",").map { it.trim().lowercase() }.filter { it.isNotBlank() }.distinct()
+    }
+    var query by remember { mutableStateOf("") }
+    val typed = query.trim().lowercase()
+    val matches = known.filter { it !in chosen && (typed.isEmpty() || it.contains(typed)) }.take(8)
+    val isNew = typed.isNotBlank() && typed !in known && typed !in chosen
+
+    fun add(tag: String) {
+        onChange((chosen + tag).distinct().joinToString(", "))
+        query = ""
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (chosen.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                chosen.forEach { tag ->
+                    InputChip(
+                        selected = true,
+                        onClick = { onChange(chosen.filter { it != tag }.joinToString(", ")) },
+                        label = { Text("#$tag") },
+                        trailingIcon = { Text("×") },
+                    )
+                }
+            }
+        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            label = { Text("Add a tag") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                imeAction = ImeAction.Done,
+            ),
+            // Done is a shortcut for a tag that already exists, never a way
+            // to invent one: that stays the button below.
+            keyboardActions = KeyboardActions(onDone = { if (typed in known) add(typed) }),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (matches.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                matches.forEach { tag ->
+                    SuggestionChip(onClick = { add(tag) }, label = { Text("#$tag") })
+                }
+            }
+        }
+        if (isNew) {
+            OutlinedButton(onClick = { add(typed) }) { Text("Add \"$typed\" as a new tag") }
         }
     }
 }
