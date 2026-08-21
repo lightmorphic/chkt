@@ -240,3 +240,9 @@ codebase, every finding verified and fixed or consciously accepted.
 - Tag helpers moved from the UI package to domain, the edit screen uses
   the one normalizer, dead code and unused dependency declarations are
   gone, and quiet-hours edge cases got tests.
+
+## [1.0.26]
+
+### Changed
+- Tapping the version number now opens chkt.org, the project's site,
+  instead of the GitHub repository. Update checks still use GitHub.

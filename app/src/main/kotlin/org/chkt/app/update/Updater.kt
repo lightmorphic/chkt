@@ -35,7 +35,9 @@ object Updater {
     // GitHub redirects renamed repos, which once pointed this check at a
     // completely different project (chkt-lite) during testing.
     private const val RELEASES_URL = "https://api.github.com/repos/lightmorphic/chkt/releases/latest"
-    const val PROJECT_URL = "https://github.com/lightmorphic/chkt"
+    // The project's own site, where the version number in the top bar
+    // points. Update *checks* still talk to the GitHub API above.
+    const val PROJECT_URL = "https://chkt.org"
 
     data class UpdateInfo(val version: String, val apkUrl: String?, val notes: String)
 
