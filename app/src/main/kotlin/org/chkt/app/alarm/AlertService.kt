@@ -8,12 +8,14 @@ import android.content.Intent
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.chkt.app.R
 import org.chkt.app.data.AlertMode
 import org.chkt.app.data.LogAction
@@ -30,7 +32,11 @@ import java.time.LocalTime
 class AlertService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var speaker: Speaker? = null
+    private var chime: AlertChime? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    /** Bumped by every new alert and by Done/Snooze, so an alert still
+     * mid-sound can tell that it has been superseded and shut up. */
+    private var alertGen = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -61,6 +67,8 @@ class AlertService : Service() {
             acquire(120_000L)
         }
 
+        val gen = ++alertGen
+
         scope.launch {
             val repo = Repository(applicationContext)
             val reminder = repo.db.reminders().byId(id)
@@ -80,19 +88,19 @@ class AlertService : Service() {
             val shouldAlert = repo.onFired(reminder)
             if (!shouldAlert) { stopQuietly(); return@launch }
 
-            if (quiet || reminder.alertMode == AlertMode.NOTIFY_ONLY) {
-                postNotification(reminder, firedDueAt, fullScreen = false, silentChannel = quiet)
+            if (quiet) {
+                postNotification(reminder, firedDueAt, fullScreen = false, silentChannel = true)
                 stopQuietly()
                 return@launch
             }
 
-            // Notification-and-speak shows the full-screen alert; speak-only
-            // just talks, no full-screen popup or persistent banner.
+            // Notification-and-speak shows the full-screen alert; the other
+            // modes just leave a banner, no full-screen popup.
             val fullScreen = reminder.alertMode == AlertMode.NOTIFY_AND_SPEAK
             startForeground(NOTIF_ID, buildNotification(reminder, firedDueAt, fullScreen = fullScreen, silentChannel = false))
             cancelPlaceholder()
             if (reminder.vibrate) vibrate()
-            speakText(reminder)
+            playAlert(reminder, gen)
         }
         return START_NOT_STICKY
     }
@@ -108,20 +116,55 @@ class AlertService : Service() {
         vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1))
     }
 
-    private fun speakText(reminder: Reminder) {
-        speaker = Speaker(this, respectDnd = reminder.respectDnd) { ready ->
-            if (!ready) { finishAfterDelay(); return@Speaker }
-            // Notes show on the alert screen and in the notification, but
-            // aren't spoken — they're often longer free text, not meant to
-            // be read aloud the way the title is.
-            speaker?.speak(reminder.title, reminder.id) { finishAfterDelay() }
+    /**
+     * One alert, always in the same order: the notification sound first,
+     * then the spoken title once that sound has actually finished. The
+     * speech engine warms up while the sound plays — starting it makes no
+     * noise — so the voice follows promptly without ever overlapping.
+     *
+     * Every alert runs this, so a nag re-alert or an alert after a snooze
+     * sounds exactly like the first one did.
+     */
+    private suspend fun playAlert(reminder: Reminder, gen: Int) {
+        if (gen != alertGen) return
+        val speaks = reminder.alertMode != AlertMode.NOTIFY_ONLY
+        // Voice-only alerts skip the ding — the spoken title is the alert.
+        val dings = reminder.alertMode != AlertMode.SPEAK_ONLY
+
+        // Nothing from a previous alert carries over into this one.
+        stopAudio()
+        val engineReady = if (speaks) CompletableDeferred<Boolean>() else null
+        if (engineReady != null) {
+            speaker = Speaker(this, respectDnd = reminder.respectDnd) { engineReady.complete(it) }
         }
+
+        if (dings) {
+            val sound = AlertChime()
+            chime = sound
+            sound.play(this, respectDnd = reminder.respectDnd)
+            chime = null
+            if (gen != alertGen) return
+            if (speaks) delay(GAP_MS)
+        }
+
+        val ready = engineReady != null &&
+            withTimeoutOrNull(TTS_INIT_TIMEOUT_MS) { engineReady.await() } == true
+        if (gen != alertGen) return
+        if (!ready) { finishAfterDelay(gen); return }
+        // Notes show on the alert screen and in the notification, but
+        // aren't spoken — they're often longer free text, not meant to
+        // be read aloud the way the title is.
+        speaker?.speak(reminder.title, reminder.id) { finishAfterDelay(gen) }
     }
 
-    /** Audio finished, keep the notification up but let the service die soon. */
-    private fun finishAfterDelay() {
+    /** Audio finished, keep the notification up but let the service die soon.
+     * A superseded alert bows out silently instead, leaving the service to
+     * the alert that replaced it. */
+    private fun finishAfterDelay(gen: Int) {
+        if (gen != alertGen) return
         scope.launch {
             delay(1_000)
+            if (gen != alertGen) return@launch
             stopAudio()
             stopForeground(STOP_FOREGROUND_DETACH)
             stopSelf()
@@ -147,12 +190,14 @@ class AlertService : Service() {
             .build()
 
     private fun stopAudio() {
+        chime?.stop(); chime = null
         speaker?.shutdown(); speaker = null
     }
 
     private fun handleDone(intent: Intent) {
         val id = intent.getStringExtra(AlarmScheduler.EXTRA_REMINDER_ID) ?: return
         val dueAt = intent.getLongExtra(EXTRA_DUE_AT, 0)
+        alertGen++
         stopAudio()
         scope.launch {
             Repository(applicationContext).acknowledge(id, dueAt, LogAction.DONE)
@@ -164,6 +209,7 @@ class AlertService : Service() {
     private fun handleSnooze(intent: Intent) {
         val id = intent.getStringExtra(AlarmScheduler.EXTRA_REMINDER_ID) ?: return
         val minutes = intent.getIntExtra(EXTRA_SNOOZE_MINUTES, 10)
+        alertGen++
         stopAudio()
         scope.launch {
             Repository(applicationContext).snooze(id, System.currentTimeMillis() + minutes * 60_000L)
@@ -195,13 +241,13 @@ class AlertService : Service() {
     }
 
     private fun buildNotification(reminder: Reminder, dueAt: Long, fullScreen: Boolean, silentChannel: Boolean): Notification {
-        // Voice-only alerts skip the notification sound — the spoken title
-        // is the alert, a ding on top would be redundant.
-        val quietDing = reminder.alertMode == AlertMode.SPEAK_ONLY
+        // Every alert channel is silent: the sound is played by AlertChime
+        // so it can finish before the voice starts, and so it plays on every
+        // alert rather than only the first one to raise this notification.
         val channel = when {
             silentChannel -> Notifications.CHANNEL_SILENT
-            reminder.respectDnd -> if (quietDing) Notifications.CHANNEL_POLITE_QUIET else Notifications.channelPolite(this)
-            else -> if (quietDing) Notifications.CHANNEL_ALARMS_QUIET else Notifications.channelAlarms(this)
+            reminder.respectDnd -> Notifications.CHANNEL_POLITE
+            else -> Notifications.CHANNEL_ALARMS
         }
 
         fun serviceAction(action: String, extra: Int? = null): PendingIntent {
@@ -264,6 +310,11 @@ class AlertService : Service() {
         const val ACTION_DISMISSED = "org.chkt.app.DISMISSED"
         const val EXTRA_DUE_AT = "due_at"
         const val EXTRA_SNOOZE_MINUTES = "snooze_minutes"
+        /** Breath between the ding and the voice, so they read as two
+         * parts of one alert rather than running together. */
+        private const val GAP_MS = 250L
+        /** A speech engine that hasn't come up by now isn't going to. */
+        private const val TTS_INIT_TIMEOUT_MS = 5_000L
 
         /** Shared across service instances: duplicate deliveries arrive as
          * separate start commands, often to a fresh instance. */

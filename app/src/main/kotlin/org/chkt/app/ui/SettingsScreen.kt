@@ -174,7 +174,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SettingsCard("Notification sound") {
                 Text(
-                    "The sound CHKT's notifications play. Applies to reminders that aren't set to Voice only.",
+                    "The sound an alert plays before the reminder is spoken. Applies to reminders that aren't set to Voice only.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 var soundLabel by remember {

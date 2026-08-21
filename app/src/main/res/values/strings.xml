@@ -5,8 +5,6 @@
     <string name="notif_channel_alarms">Reminder alarms</string>
     <string name="notif_channel_silent">Silent reminders</string>
     <string name="notif_channel_polite">Reminders that respect Do Not Disturb</string>
-    <string name="notif_channel_alarms_quiet">Voice-only reminder alarms</string>
-    <string name="notif_channel_polite_quiet">Voice-only reminders that respect Do Not Disturb</string>
     <string name="notif_channel_service">Alert playback</string>
     <string name="action_done">Done</string>
     <string name="action_snooze">Snooze</string>

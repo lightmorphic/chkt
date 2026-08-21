@@ -131,3 +131,21 @@ First release.
   itself (and says so), rather than leaving one more tap between a
   proven connection and sync actually running. Editing the address or
   key clears a stale result.
+
+### Fixed (1.0.19)
+- The notification sound and the spoken reminder played over each other,
+  and on nag re-alerts or an alert after a snooze the sound often didn't
+  play at all. Both came from the sound belonging to the notification
+  channel: Android plays a channel's sound the instant the notification
+  is posted (so it landed on top of the voice, not before it), and only
+  when the notification first appears — every later alert reusing the
+  same still-visible notification was silent, which `setOnlyAlertOnce`
+  made unconditional. CHKT now plays the sound itself and waits for it
+  to finish before speaking, so every alert of a reminder is the same:
+  sound, short pause, voice — first alert, each re-alert, and after a
+  snooze alike. Voice-only and Notification-only reminders are unchanged
+  in what they play. The notification channels are silent now, so the
+  per-generation "alarms_v…"/"polite_v…" channels that existed only to
+  change a channel sound are gone from Android's notification settings;
+  the sound is still picked in CHKT's own Settings and applies from the
+  next alert.

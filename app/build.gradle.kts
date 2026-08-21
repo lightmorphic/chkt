@@ -15,8 +15,8 @@ android {
         targetSdk = 34
         // Bump BOTH for every build that leaves this machine, including test
         // builds: same-version sideloads can silently keep the old install.
-        versionCode = 24
-        versionName = "1.0.18"
+        versionCode = 25
+        versionName = "1.0.19"
     }
 
     buildTypes {
