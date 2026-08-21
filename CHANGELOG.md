@@ -176,3 +176,7 @@ First release.
   after tagging something on the phone that you want to see on the web —
   or the other way round. A message says how it went; with sync off it
   says that and changes nothing.
+
+### Added (1.0.23)
+- Tapping the version number in the top bar opens the project page in your
+  browser, matching the version badge on CHKT Server's web pages.

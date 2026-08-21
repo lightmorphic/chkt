@@ -96,6 +96,16 @@ fun HomeScreen(
                         "v" + org.chkt.app.update.Updater.installedVersionName(context) + "  ",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        // Tapping the version opens the project page, same as
+                        // the badge on the server's web pages.
+                        modifier = Modifier.clickable {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(org.chkt.app.update.Updater.PROJECT_URL),
+                                )
+                            )
+                        },
                     )
                     UpdateStatusDot()
                     Spacer(Modifier.width(8.dp))
