@@ -71,6 +71,7 @@ fun EditReminderScreen(
     var notes by remember { mutableStateOf("") }
     var date by remember { mutableStateOf<LocalDate?>(LocalDate.now()) }
     var time by remember { mutableStateOf(LocalTime.of((LocalTime.now().hour + 1) % 24, 0)) }
+    var durationMinutes by remember { mutableStateOf(0) }
     var rule by remember { mutableStateOf<RepeatRule>(RepeatRule.None) }
     var alertMode by remember { mutableStateOf(AlertMode.NOTIFY_AND_SPEAK) }
     var vibrate by remember { mutableStateOf(true) }
@@ -96,6 +97,7 @@ fun EditReminderScreen(
             if (r != null) {
                 original = r
                 title = r.title; notes = r.notes
+                durationMinutes = r.durationMinutes
                 r.dueAt?.let {
                     val zdt = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
                     date = zdt.toLocalDate(); time = zdt.toLocalTime().withSecond(0).withNano(0)
@@ -132,6 +134,7 @@ fun EditReminderScreen(
             title = title.trim(),
             notes = notes.trim(),
             dueAt = dueAt,
+            durationMinutes = durationMinutes,
             repeatRule = rule.encode(),
             alertMode = alertMode,
             vibrate = vibrate,
@@ -208,6 +211,11 @@ fun EditReminderScreen(
                 onDate = { date = it }, onTime = { time = it },
                 onClearDate = { date = null },
             )
+
+            if (date != null) {
+                SectionLabel("How long it takes")
+                DurationPicker(durationMinutes) { durationMinutes = it }
+            }
 
             SectionLabel("Repeat")
             RepeatPicker(rule = rule, date = date, time = time, onChange = { rule = it })
@@ -461,6 +469,47 @@ private fun EveryPicker(rule: RepeatRule, onChange: (RepeatRule) -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("m" to "min", "h" to "hrs", "d" to "days", "w" to "wks", "y" to "yrs").forEach { (code, label) ->
                 FilterChip(selected = unit == code, onClick = { unit = code; push() }, label = { Text(label) })
+            }
+        }
+    }
+}
+
+/**
+ * How long the thing itself takes. Nothing about the alert changes — a
+ * two-hour reminder still alerts once, at its start — but a reminder
+ * published to a calendar shows up as a block of that length, so a meeting
+ * looks like a meeting rather than a moment.
+ */
+@Composable
+private fun DurationPicker(minutes: Int, onChange: (Int) -> Unit) {
+    val presets = listOf(0 to "Point in time", 15 to "15 min", 30 to "30 min", 60 to "1 hour")
+    var customOpen by remember { mutableStateOf(false) }
+    val custom = customOpen || presets.none { it.first == minutes }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            presets.forEach { (value, label) ->
+                FilterChip(
+                    selected = !custom && minutes == value,
+                    onClick = { customOpen = false; onChange(value) },
+                    label = { Text(label) },
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = custom, onClick = { customOpen = true }, label = { Text("Custom") })
+            if (custom) {
+                OutlinedTextField(
+                    value = if (minutes == 0) "" else minutes.toString(),
+                    onValueChange = { entered ->
+                        // Four digits is just under a week, past any sane
+                        // single event, and keeps a stray paste harmless.
+                        onChange(entered.filter { it.isDigit() }.take(4).toIntOrNull() ?: 0)
+                    },
+                    label = { Text("Minutes") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(0.4f),
+                )
             }
         }
     }
