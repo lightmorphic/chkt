@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +23,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -67,6 +71,8 @@ fun HomeScreen(
         )
     }
     var activeTag by remember { mutableStateOf<String?>(null) }
+    var syncing by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
 
     val allTags = remember(reminders) {
         reminders.flatMap { it.tagList() }.distinct().sorted()
@@ -75,6 +81,7 @@ fun HomeScreen(
     else reminders.filter { activeTag in it.tagList() }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {
@@ -112,7 +119,23 @@ fun HomeScreen(
             }
         },
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        // Pull down to sync with the server right now, instead of waiting
+        // for the hourly background pass — the natural gesture after adding
+        // something here that you want to see on the web, or vice versa.
+        // With sync off the gesture just says so and changes nothing.
+        PullToRefreshBox(
+            isRefreshing = syncing,
+            onRefresh = {
+                scope.launch {
+                    syncing = true
+                    val message = org.chkt.app.sync.SyncClient(context).syncNow()
+                    syncing = false
+                    snackbar.showSnackbar(message)
+                }
+            },
+            modifier = Modifier.padding(padding),
+        ) {
+        Column(Modifier.fillMaxSize()) {
             if (allTags.isNotEmpty()) {
                 LazyRow(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
@@ -130,7 +153,9 @@ fun HomeScreen(
                 }
             }
             LazyColumn(
-                modifier = Modifier.padding(16.dp),
+                // Fills the rest of the screen so the pull-down gesture works
+                // from anywhere, including an empty or one-line list.
+                modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(shown, key = { it.id }) { reminder ->
@@ -154,6 +179,7 @@ fun HomeScreen(
                     }
                 }
             }
+        }
         }
     }
 }

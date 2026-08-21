@@ -169,3 +169,10 @@ First release.
   chip you can tap to remove. A word that isn't a tag yet takes a
   deliberate "add as a new tag" button, so a typo can't quietly become a
   tag that sits in the list forever looking almost right.
+
+### Added (1.0.22)
+- Pull down on the reminder list to sync with your server right now,
+  instead of waiting for the hourly background pass. The natural gesture
+  after tagging something on the phone that you want to see on the web —
+  or the other way round. A message says how it went; with sync off it
+  says that and changes nothing.
