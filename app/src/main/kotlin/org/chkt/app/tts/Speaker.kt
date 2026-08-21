@@ -65,9 +65,6 @@ class Speaker(
             return packages
         }
 
-        /** True if any TTS engine is installed on the device. */
-        fun engineInstalled(context: Context): Boolean = installedEnginePackages(context).isNotEmpty()
-
         /** True unless neither Google's TTS nor Sherpa TTS is present — the
          * two engines CHKT knows will actually speak reminders out loud.
          * Devices without Google Play Services (GrapheneOS etc.) commonly

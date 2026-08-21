@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Same rule for cloud backups and device-to-device copies:
+     everything except the settings DataStore, which carries the sync access
+     key. See backup_rules.xml for the reasoning. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/settings.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/settings.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>

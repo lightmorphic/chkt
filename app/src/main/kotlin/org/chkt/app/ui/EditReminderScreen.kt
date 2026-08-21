@@ -53,6 +53,7 @@ import kotlinx.coroutines.withContext
 import org.chkt.app.data.AlertMode
 import org.chkt.app.data.LocationTrigger
 import org.chkt.app.data.Reminder
+import org.chkt.app.domain.tagList
 import org.chkt.app.domain.RepeatRule
 import org.chkt.app.domain.isEnded
 import java.time.DayOfWeek
@@ -79,13 +80,13 @@ fun EditReminderScreen(
     var notes by remember { mutableStateOf("") }
     var date by remember { mutableStateOf<LocalDate?>(LocalDate.now()) }
     var time by remember { mutableStateOf(LocalTime.of((LocalTime.now().hour + 1) % 24, 0)) }
-    var durationMinutes by remember { mutableStateOf(0) }
+    var durationMinutes by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var rule by remember { mutableStateOf<RepeatRule>(RepeatRule.None) }
     var alertMode by remember { mutableStateOf(AlertMode.NOTIFY_AND_SPEAK) }
     var vibrate by remember { mutableStateOf(true) }
     var respectDnd by remember { mutableStateOf(false) }
-    var nagInterval by remember { mutableStateOf(0) }
-    var nagStopAfter by remember { mutableStateOf(60) }
+    var nagInterval by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var nagStopAfter by remember { androidx.compose.runtime.mutableIntStateOf(60) }
     var deleteAfterDismissed by remember { mutableStateOf(false) }
     var active by remember { mutableStateOf(true) }
     var tags by remember { mutableStateOf("") }
@@ -138,7 +139,7 @@ fun EditReminderScreen(
         }
         val base = original
         val reminder = (base ?: Reminder(title = "", dueAt = null)).copy(
-            tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }.joinToString(", "),
+            tags = org.chkt.app.domain.normalizeTags(tags),
             title = title.trim(),
             notes = notes.trim(),
             dueAt = dueAt,

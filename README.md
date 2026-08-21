@@ -9,13 +9,17 @@ No ads, no tracking, no Google services, no account. Donation-supported.
 ## What it does
 
 - **Spoken reminders** through your phone's text-to-speech engine, with a
-  choice of alert styles per reminder: ringtone + speech, ringtone only,
-  speech only, or a plain notification. Optional tone before the speech.
+  choice of alert styles per reminder: notification + voice, voice only,
+  or notification only — the sound plays first, then the reminder is
+  spoken.
 - **Alarms that actually fire**, exact alarms that survive reboots and
   battery savers, bypass Do Not Disturb, and show a full-screen alert like an
   alarm clock.
-- **Multiple lists**, flexible repeats (daily, weekly, monthly, yearly,
-  custom intervals), and snooze up to a day.
+- **Tags instead of lists** — a reminder wears any number of them — with
+  flexible repeats (daily, weekly, monthly, yearly, custom intervals),
+  re-alerts every few minutes until answered, and snooze up to a day.
+- **A calendar you can subscribe to**: pair with CHKT Server and reminders
+  tagged `cal` appear in any calendar app over CalDAV, both ways.
 - **Tap-to-record widget**, a plain home-screen icon; tap it and say
   *"remind me at 2pm to feed the cat"*. Parsed on-device, nothing leaves
   your phone.
@@ -58,6 +62,12 @@ one is installed (e.g. FUTO Voice Input).
 
 Requires JDK 17 and the Android SDK (platform 34). No proprietary
 dependencies; builds cleanly for F-Droid.
+
+`assembleRelease` produces an **unsigned** APK — sign it with your own key
+before installing. The APKs on this project's GitHub releases are the
+debug-variant build (signed with a debug key); an update must be signed
+with the same key as the installed copy, so pick one source and stay
+with it.
 
 ## Licence
 

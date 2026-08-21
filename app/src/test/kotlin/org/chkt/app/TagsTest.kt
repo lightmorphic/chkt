@@ -1,6 +1,6 @@
 package org.chkt.app
 
-import org.chkt.app.ui.normalizeTags
+import org.chkt.app.domain.normalizeTags
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

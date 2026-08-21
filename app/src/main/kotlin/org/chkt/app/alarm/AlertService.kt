@@ -77,7 +77,12 @@ class AlertService : Service() {
             }
             val firedDueAt = reminder.snoozedUntil ?: reminder.dueAt ?: System.currentTimeMillis()
 
-            if (deduper.isDuplicate("$id:$firedDueAt", System.currentTimeMillis())) {
+            // Key on the id alone, NOT id+dueAt: onFired advances dueAt, so
+            // a duplicate delivery landing after the first one commits reads
+            // the advanced time, gets a different key, and would pass. The
+            // window is far below the shortest nag interval (10s vs 1 min),
+            // so no legitimate re-alert of the same reminder can collide.
+            if (deduper.isDuplicate(id, System.currentTimeMillis())) {
                 stopQuietly(); return@launch
             }
 

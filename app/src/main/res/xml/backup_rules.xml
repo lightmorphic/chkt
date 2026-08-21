@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below. The settings DataStore holds the sync access key;
+     a credential doesn't belong in a cloud backup. Reminders themselves
+     (the Room database) still back up — losing settings on a restore is a
+     minute of re-entry, leaking the server key is not. -->
+<full-backup-content>
+    <exclude domain="file" path="datastore/settings.preferences_pb" />
+</full-backup-content>

@@ -79,7 +79,9 @@ class SyncClient(private val context: Context) {
             val code = conn.responseCode
             if (code != 200) return@withContext "Sync failed (HTTP $code)."
 
-            val response = JSONObject(conn.inputStream.use { it.readBytes().decodeToString() })
+            // 20 MB is orders of magnitude past any real reminder set; an
+            // unbounded read lets a haywire server OOM the app instead.
+            val response = JSONObject(conn.inputStream.use { readCapped(it, 20 * 1024 * 1024) })
             var applied = 0
 
             val remArr = response.optJSONArray("reminders") ?: JSONArray()
@@ -186,8 +188,25 @@ class SyncClient(private val context: Context) {
         put("dueAt", l.dueAt); put("action", l.action.name); put("at", l.at)
     }
 
+    private fun readCapped(input: java.io.InputStream, maxBytes: Int): String {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(64 * 1024)
+        while (true) {
+            val n = input.read(buffer)
+            if (n < 0) break
+            out.write(buffer, 0, n)
+            require(out.size() <= maxBytes) { "The server response is unreasonably large." }
+        }
+        return out.toByteArray().decodeToString()
+    }
+
     private fun open(url: String, accessKey: String, method: String): HttpURLConnection {
-        val conn = URL(url).openConnection() as HttpURLConnection
+        // Only web schemes carry this bearer key anywhere sensible; anything
+        // else (file://, content://) is a typo or worse, and would otherwise
+        // surface as an obscure ClassCastException.
+        val scheme = runCatching { java.net.URI(url.trim()).scheme }.getOrNull()
+        require(scheme == "http" || scheme == "https") { "The server address must start with http:// or https://." }
+        val conn = URL(url.trim()).openConnection() as HttpURLConnection
         conn.requestMethod = method
         conn.connectTimeout = 10_000
         conn.readTimeout = 20_000

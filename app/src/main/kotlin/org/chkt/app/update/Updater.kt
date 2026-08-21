@@ -103,6 +103,38 @@ object Updater {
         data class Failed(val message: String) : DownloadResult()
     }
 
+    /** Only ever install what GitHub itself serves, over HTTPS. The URL
+     * comes from release JSON, so don't trust it blindly. */
+    private fun isGithubHttps(url: String): Boolean {
+        val uri = runCatching { java.net.URI(url) }.getOrNull() ?: return false
+        if (uri.scheme != "https") return false
+        val host = uri.host ?: return false
+        return host == "github.com" || host.endsWith(".githubusercontent.com")
+    }
+
+    /** Follows redirects by hand so the GitHub-over-HTTPS check applies to
+     * EVERY hop, not just the first URL — automatic following would happily
+     * leave the allowlist on a redirect. */
+    private fun openFollowingRedirects(startUrl: String): HttpURLConnection {
+        var current = startUrl
+        repeat(5) {
+            val conn = URL(current).openConnection() as HttpURLConnection
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 60_000
+            conn.instanceFollowRedirects = false
+            if (conn.responseCode !in 301..308) return conn
+            val next = conn.getHeaderField("Location")
+                ?: throw java.io.IOException("Redirect with no destination.")
+            conn.disconnect()
+            val resolved = java.net.URI(current).resolve(next).toString()
+            if (!isGithubHttps(resolved)) {
+                throw java.io.IOException("Redirected off GitHub; refusing.")
+            }
+            current = resolved
+        }
+        throw java.io.IOException("Too many redirects.")
+    }
+
     /** Downloads the release APK to cache, reporting 0f..1f progress as it goes. */
     suspend fun downloadUpdate(
         context: Context,
@@ -110,20 +142,15 @@ object Updater {
         onProgress: (Float) -> Unit = {},
     ): DownloadResult = withContext(Dispatchers.IO) {
         val url = info.apkUrl ?: return@withContext DownloadResult.Failed("That release has no APK attached.")
-        // Only ever install what GitHub itself serves, over HTTPS. The URL
-        // comes from release JSON, so don't trust it blindly.
-        val host = runCatching { java.net.URI(url) }.getOrNull()
-            ?.takeIf { it.scheme == "https" }?.host
-        if (host != "github.com" && host?.endsWith(".githubusercontent.com") != true) {
+        if (!isGithubHttps(url)) {
             return@withContext DownloadResult.Failed("Refusing a download URL that isn't GitHub over HTTPS.")
         }
         try {
             val dir = File(context.cacheDir, "updates").apply { mkdirs() }
             val apk = File(dir, "chkt-${info.version}.apk")
-            val conn = URL(url).openConnection() as HttpURLConnection
+            val conn = openFollowingRedirects(url)
             conn.connectTimeout = 10_000
             conn.readTimeout = 60_000
-            conn.instanceFollowRedirects = true
             val total = conn.contentLength
             conn.inputStream.use { input ->
                 apk.outputStream().use { output ->

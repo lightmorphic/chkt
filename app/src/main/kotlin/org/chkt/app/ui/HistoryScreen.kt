@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.chkt.app.data.Reminder
+import org.chkt.app.domain.tagList
 import org.chkt.app.domain.isEnded
 
 /**

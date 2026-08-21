@@ -4,9 +4,9 @@ All notable changes to CHKT are recorded here.
 Format: [Keep a Changelog](https://keepachangelog.com/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - unreleased
+## [1.0.0 – 1.0.18]
 
-First release.
+The first public releases, recorded here as one era.
 
 ### Added
 - Tags replace lists: a reminder wears any number of free-form tags, and
@@ -109,7 +109,9 @@ First release.
   Android 12+ approximate-location permission accompanies the precise
   one, so lint runs clean.
 
-### Added (1.0.17)
+## [1.0.17]
+
+### Added
 - History: one-time reminders leave the main list once they're done and
   live under the new clock button in the top bar (between the update dot
   and Statistics). Look back over them, or tap one to give it a new date
@@ -118,7 +120,9 @@ First release.
   Save" is the whole gesture. Matching History page on CHKT Server
   (1.1.14).
 
-### Changed (1.0.18)
+## [1.0.18]
+
+### Changed
 - History now takes every ended reminder, not just one-times: a repeating
   or location reminder you switch off moves there too, instead of sitting
   greyed-out at the bottom of the main list. Reuse works the same way —
@@ -132,7 +136,9 @@ First release.
   proven connection and sync actually running. Editing the address or
   key clears a stale result.
 
-### Fixed (1.0.19)
+## [1.0.19]
+
+### Fixed
 - The notification sound and the spoken reminder played over each other,
   and on nag re-alerts or an alert after a snooze the sound often didn't
   play at all. Both came from the sound belonging to the notification
@@ -150,7 +156,9 @@ First release.
   the sound is still picked in CHKT's own Settings and applies from the
   next alert.
 
-### Added (1.0.20)
+## [1.0.20]
+
+### Added
 - Reminders have a length, so they can be published to a calendar as a
   block rather than a moment. It defaults to nothing — a plain reminder
   is still a point in time — and never changes how or when the alert
@@ -159,7 +167,9 @@ First release.
   calendar you can subscribe to from any calendar app on any device, and
   anything you add to that calendar comes back as a reminder.
 
-### Changed (1.0.21)
+## [1.0.21]
+
+### Changed
 - Tags are lowercase. "Cal" and "cal" were two tags that looked identical
   in a list and behaved differently everywhere else; now there's only one
   of them, decided in the one place every save passes through — the edit
@@ -170,21 +180,63 @@ First release.
   deliberate "add as a new tag" button, so a typo can't quietly become a
   tag that sits in the list forever looking almost right.
 
-### Added (1.0.22)
+## [1.0.22]
+
+### Added
 - Pull down on the reminder list to sync with your server right now,
   instead of waiting for the hourly background pass. The natural gesture
   after tagging something on the phone that you want to see on the web —
   or the other way round. A message says how it went; with sync off it
   says that and changes nothing.
 
-### Added (1.0.23)
+## [1.0.23]
+
+### Added
 - Tapping the version number in the top bar opens the project page in your
   browser, matching the version badge on CHKT Server's web pages.
 
-### Added (1.0.24)
+## [1.0.24]
+
+### Added
 - Alert diagnostics in Settings: a log of what the last alerts actually
   did — the sound starting, finishing or failing, the voice speaking —
   for chasing down a phone where part of an alert stays quiet.
 - If the chosen notification sound won't open when an alert fires, the
   alert now falls back to the system default sound instead of skipping
   the ding.
+
+## [1.0.25]
+
+Security-and-quality audit release: two independent reviews of the whole
+codebase, every finding verified and fixed or consciously accepted.
+
+### Fixed
+- The duplicate-alarm guard could be defeated by its own bookkeeping: it
+  keyed on the reminder's due time, which advancing to the next occurrence
+  rewrites, so a duplicated delivery arriving moments later computed a
+  different key and sounded a second full alert. The guard now keys on the
+  reminder alone — its window is seconds, the shortest re-alert interval
+  is a minute, so nothing legitimate collides.
+- Pull-to-refresh could leave the spinner stuck forever if sync failed in
+  an unexpected way; it now always stops.
+
+### Changed (security hardening)
+- The sync access key no longer rides device backups: reminders back up,
+  the credential doesn't.
+- The access key field is masked like the password it is.
+- A plain http:// server address gets a clear warning (fine on Tailscale
+  or your LAN, unencrypted anywhere else), and non-web addresses are
+  refused outright.
+- The updater re-checks its GitHub-over-HTTPS rule on every redirect hop,
+  not just the first URL.
+- Sync responses and imported backup files are size-capped instead of
+  read without limit.
+
+### Changed (housekeeping)
+- README describes the app that exists (three alert styles, tags, the
+  calendar) and documents the release-signing convention; SECURITY.md
+  tells the truth about plain-HTTP sync and the backup exclusion; this
+  changelog has proper per-version sections again.
+- Tag helpers moved from the UI package to domain, the edit screen uses
+  the one normalizer, dead code and unused dependency declarations are
+  gone, and quiet-hours edge cases got tests.

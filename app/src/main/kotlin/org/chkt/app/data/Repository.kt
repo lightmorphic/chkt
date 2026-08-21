@@ -22,7 +22,7 @@ class Repository(
     suspend fun saveReminder(reminder: Reminder) {
         val stamped = reminder.copy(
             updatedAt = System.currentTimeMillis(),
-            tags = org.chkt.app.ui.normalizeTags(reminder.tags),
+            tags = org.chkt.app.domain.normalizeTags(reminder.tags),
         )
         db.reminders().upsert(stamped)
         scheduler.schedule(stamped)

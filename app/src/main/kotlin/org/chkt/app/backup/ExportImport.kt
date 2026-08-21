@@ -7,7 +7,7 @@ import org.chkt.app.data.LocationTrigger
 import org.chkt.app.data.Reminder
 import org.chkt.app.data.Repository
 import org.chkt.app.ui.describeWhen
-import org.chkt.app.ui.tagList
+import org.chkt.app.domain.tagList
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -142,7 +142,21 @@ object ExportImport {
     }
 
     suspend fun importJsonFromUri(context: Context, repo: Repository, uri: Uri): Int = try {
-        val raw = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+        // A backup of even thousands of reminders is well under a megabyte;
+        // an unbounded read of a mispicked file OOM-kills the app.
+        val raw = context.contentResolver.openInputStream(uri)?.use { input ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(64 * 1024)
+            var tooBig = false
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                out.write(buffer, 0, n)
+                if (out.size() > 20 * 1024 * 1024) { tooBig = true; break }
+            }
+            // Too large to be a CHKT backup; -1 is this function's failure code.
+            if (tooBig) null else out.toByteArray().decodeToString()
+        }
         val reminders = raw?.let { parseJson(it) }
         if (reminders == null) -1
         else {

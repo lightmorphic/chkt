@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -95,8 +96,10 @@ fun SetupScreen(onDone: () -> Unit) {
     val notificationsOk = remember(refresh) { SetupCheck.notificationsOk(context) }
     val exactOk = remember(refresh) { SetupCheck.exactAlarmsOk(context) }
     val fullScreenOk = remember(refresh) { SetupCheck.fullScreenOk(context) }
+    // Derived like its siblings, but ALSO re-checked on resume elsewhere,
+    // hence var + LaunchedEffect rather than a plain remember derivation.
     var batteryOk by remember { mutableStateOf(SetupCheck.batteryOk(context)) }
-    remember(refresh) { batteryOk = SetupCheck.batteryOk(context); 0 }
+    LaunchedEffect(refresh) { batteryOk = SetupCheck.batteryOk(context) }
     val micOk = remember(refresh) { SetupCheck.microphoneOk(context) }
 
     val askNotifications = rememberLauncherForActivityResult(

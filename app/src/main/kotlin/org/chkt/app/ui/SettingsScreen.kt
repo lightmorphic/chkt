@@ -346,9 +346,23 @@ fun SettingsScreen(onBack: () -> Unit) {
                     label = { Text("Server address (https://…)") },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (server.trim().startsWith("http://")) {
+                    Text(
+                        "Plain http:// — fine on Tailscale or your own LAN, but the " +
+                            "access key and your reminders travel unencrypted. Don't " +
+                            "use it across the open internet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 OutlinedTextField(
                     value = key, onValueChange = { key = it; testResult = null },
                     label = { Text(if (sync.accessKey.isBlank()) "Access key" else "Access key (saved, leave blank to keep)") },
+                    // It's a credential: keep it off the screen and out of
+                    // the keyboard's learned words.
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {

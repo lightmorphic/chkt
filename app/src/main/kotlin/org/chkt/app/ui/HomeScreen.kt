@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.chkt.app.data.Reminder
 import org.chkt.app.domain.isEnded
+import org.chkt.app.domain.tagList
 import org.chkt.app.domain.nextAlertMillis
 
 /**
@@ -65,10 +66,13 @@ fun HomeScreen(
         // Ended reminders (answered one-offs, switched-off repeats) live on
         // the History screen, not here — the main list is what's coming up,
         // not what already happened. Everything left is enabled.
-        unordered.filterNot { it.isEnded() }.sortedWith(
-            compareBy<Reminder> { it.nextAlertMillis() == null }
-                .thenBy { it.nextAlertMillis() ?: Long.MAX_VALUE }
-        )
+        // One "now" and one precomputed key per reminder: the default arg
+        // re-reads the clock per comparison, an inconsistent comparator.
+        val now = System.currentTimeMillis()
+        unordered.filterNot { it.isEnded() }
+            .map { it to it.nextAlertMillis(now) }
+            .sortedWith(compareBy({ it.second == null }, { it.second ?: Long.MAX_VALUE }))
+            .map { it.first }
     }
     var activeTag by remember { mutableStateOf<String?>(null) }
     var syncing by remember { mutableStateOf(false) }
@@ -138,8 +142,15 @@ fun HomeScreen(
             onRefresh = {
                 scope.launch {
                     syncing = true
-                    val message = org.chkt.app.sync.SyncClient(context).syncNow()
-                    syncing = false
+                    // syncNow promises not to throw, but a stuck spinner is
+                    // the price of ever being wrong about that.
+                    val message = try {
+                        org.chkt.app.sync.SyncClient(context).syncNow()
+                    } catch (e: Exception) {
+                        "Sync failed: " + (e.message ?: "unknown error")
+                    } finally {
+                        syncing = false
+                    }
                     snackbar.showSnackbar(message)
                 }
             },
@@ -215,16 +226,6 @@ private fun ActiveCircle(active: Boolean, onToggle: () -> Unit) {
         }
     }
 }
-
-fun Reminder.tagList(): List<String> =
-    tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
-
-/** Tags are lowercase, trimmed and unique, in the order given. Case was only
- * ever a way to end up with "Cal" and "cal": two tags that look the same in a
- * list and behave differently everywhere else. */
-fun normalizeTags(raw: String): String =
-    raw.split(",").map { it.trim().lowercase() }.filter { it.isNotBlank() }
-        .distinct().joinToString(", ")
 
 private val dueFormat = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM, HH:mm")
 
