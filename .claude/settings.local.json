@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /home/charlie/GitHub/chkt log --oneline -5)",
+      "Bash(git -C /home/charlie/GitHub/chkt show --stat HEAD)"
+    ]
+  }
+}
