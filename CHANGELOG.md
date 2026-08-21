@@ -180,3 +180,11 @@ First release.
 ### Added (1.0.23)
 - Tapping the version number in the top bar opens the project page in your
   browser, matching the version badge on CHKT Server's web pages.
+
+### Added (1.0.24)
+- Alert diagnostics in Settings: a log of what the last alerts actually
+  did — the sound starting, finishing or failing, the voice speaking —
+  for chasing down a phone where part of an alert stays quiet.
+- If the chosen notification sound won't open when an alert fires, the
+  alert now falls back to the system default sound instead of skipping
+  the ding.

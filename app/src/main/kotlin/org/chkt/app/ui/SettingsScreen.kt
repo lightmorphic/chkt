@@ -172,6 +172,34 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }) { Text("Android voice engine settings") }
             }
 
+            SettingsCard("Alert diagnostics") {
+                Text(
+                    "What the last alerts actually did — the sound starting, finishing " +
+                        "or failing, and the voice speaking. For chasing down a phone " +
+                        "where an alert stays quiet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                var diagLines by remember { mutableStateOf(org.chkt.app.alarm.AlertLog.read(context)) }
+                Row {
+                    OutlinedButton(onClick = { diagLines = org.chkt.app.alarm.AlertLog.read(context) }) { Text("Refresh") }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(onClick = {
+                        org.chkt.app.alarm.AlertLog.clear(context); diagLines = emptyList()
+                    }) { Text("Clear") }
+                }
+                if (diagLines.isEmpty()) {
+                    Text("Nothing logged yet.", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    diagLines.asReversed().forEach { line ->
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        )
+                    }
+                }
+            }
+
             SettingsCard("Notification sound") {
                 Text(
                     "The sound an alert plays before the reminder is spoken. Applies to reminders that aren't set to Voice only.",

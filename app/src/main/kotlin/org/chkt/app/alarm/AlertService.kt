@@ -94,6 +94,11 @@ class AlertService : Service() {
                 return@launch
             }
 
+            AlertLog.log(
+                applicationContext,
+                "alert gen=$gen mode=${reminder.alertMode} nag=${if (reminder.nagStartedAt != null) "re-alert" else "first"} \"${reminder.title.take(20)}\"",
+            )
+
             // Notification-and-speak shows the full-screen alert; the other
             // modes just leave a banner, no full-screen popup.
             val fullScreen = reminder.alertMode == AlertMode.NOTIFY_AND_SPEAK
@@ -139,22 +144,29 @@ class AlertService : Service() {
         }
 
         if (dings) {
-            val sound = AlertChime()
+            val sound = AlertChime { event -> AlertLog.log(applicationContext, event) }
             chime = sound
             sound.play(this, respectDnd = reminder.respectDnd)
             chime = null
-            if (gen != alertGen) return
+            if (gen != alertGen) { AlertLog.log(applicationContext, "superseded after chime"); return }
             if (speaks) delay(GAP_MS)
         }
 
         val ready = engineReady != null &&
             withTimeoutOrNull(TTS_INIT_TIMEOUT_MS) { engineReady.await() } == true
-        if (gen != alertGen) return
-        if (!ready) { finishAfterDelay(gen); return }
+        if (gen != alertGen) { AlertLog.log(applicationContext, "superseded before voice"); return }
+        if (!ready) {
+            if (speaks) AlertLog.log(applicationContext, "voice skipped: engine not ready")
+            finishAfterDelay(gen); return
+        }
         // Notes show on the alert screen and in the notification, but
         // aren't spoken — they're often longer free text, not meant to
         // be read aloud the way the title is.
-        speaker?.speak(reminder.title, reminder.id) { finishAfterDelay(gen) }
+        AlertLog.log(applicationContext, "voice speaking")
+        speaker?.speak(reminder.title, reminder.id) {
+            AlertLog.log(applicationContext, "voice done")
+            finishAfterDelay(gen)
+        }
     }
 
     /** Audio finished, keep the notification up but let the service die soon.
