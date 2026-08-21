@@ -150,7 +150,7 @@ First release.
   the sound is still picked in CHKT's own Settings and applies from the
   next alert.
 
-### Added (unreleased)
+### Added (1.0.20)
 - Reminders have a length, so they can be published to a calendar as a
   block rather than a moment. It defaults to nothing — a plain reminder
   is still a point in time — and never changes how or when the alert
